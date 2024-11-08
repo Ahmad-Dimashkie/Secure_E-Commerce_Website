@@ -2,13 +2,24 @@ from datetime import datetime
 from flask import Flask, jsonify, request
 from config import Config
 from models import db, Inventory, Alert, Category
-from crud import create_inventory_item, get_inventory, update_inventory_item, delete_inventory_item, get_low_stock_items
+from crud import create_inventory_item, get_inventory, get_product_with_promotion, update_inventory_item, delete_inventory_item, get_low_stock_items
 from crud import calculate_inventory_turnover, get_most_popular_products, predict_future_demand
 from utils import send_low_stock_alert
+from crud import create_product, get_all_products, get_product_by_id, update_product, delete_product, process_csv, create_promotion, create_coupon
+import os
+
 
 app = Flask(__name__)
 app.config.from_object(Config)
 db.init_app(app)
+
+# Define the upload folder path
+UPLOAD_FOLDER = './uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Ensure the folder exists when the app starts
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 @app.route('/inventory', methods=['GET'])
 def get_inventory_route():
@@ -25,7 +36,6 @@ def create_inventory_route():
 def update_inventory_route(item_id):
     data = request.get_json()
     
-    # Ensure that we are looking up the item by its primary key 'id'
     item = Inventory.query.get(item_id)
     if not item:
         return jsonify({"error": "Inventory item not found"}), 404
@@ -88,6 +98,128 @@ def get_categories():
     categories = Category.query.all()
     category_data = [category.to_dict() for category in categories]
     return jsonify(category_data), 200
+
+
+
+@app.route('/products', methods=['POST'])
+def create_product_route():
+    data = request.get_json()
+    product = create_product(
+        name=data.get('name'),
+        subcategory_id=data.get('subcategory_id'),
+        description=data.get('description'),
+        specifications=data.get('specifications'),
+        price=data.get('price'),
+        stock_level=data.get('stock_level', 0),
+        image_url=data.get('image_url')
+    )
+    if product:
+        return jsonify(product.to_dict()), 201
+    else:
+        return jsonify({"error": "Failed to create product"}), 400
+
+
+@app.route('/products', methods=['GET'])
+def get_all_products_route():
+    products = get_all_products()
+    return jsonify([product.to_dict() for product in products]), 200
+
+
+
+
+
+@app.route('/products/<int:product_id>', methods=['PUT'])
+def update_product_route(product_id):
+    data = request.get_json()
+    # Check if all required fields are present
+    if "subcategory_id" not in data or data["subcategory_id"] is None:
+        return jsonify({"error": "subcategory_id is required"}), 400
+    if "price" not in data or data["price"] is None:
+        return jsonify({"error": "price is required"}), 400
+
+    # Call the update function with valid data
+    product = update_product(
+        product_id,
+        name=data.get('name'),
+        subcategory_id=data.get('subcategory_id'),
+        description=data.get('description'),
+        specifications=data.get('specifications'),
+        price=data.get('price'),
+        stock_level=data.get('stock_level', 0),
+        image_url=data.get('image_url')
+    )
+    if product:
+        return jsonify(product.to_dict()), 200
+    else:
+        return jsonify({"error": "Failed to update product or product not found"}), 404
+
+
+
+@app.route('/products/<int:product_id>', methods=['DELETE'])
+def delete_product_route(product_id):
+    success = delete_product(product_id)
+    if success:
+        return jsonify({"message": "Product deleted"}), 200
+    else:
+        return jsonify({"error": "Failed to delete product or product not found"}), 404
+
+
+
+@app.route('/upload-products', methods=['POST'])
+def upload_products():
+    # Check if the 'file' key is in the uploaded files
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part in the request"}), 400
+    
+    # Get the file from the request
+    file = request.files['file']
+    
+    # Check if the file has a valid filename
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+    
+    if file and file.filename.endswith('.csv'):
+        # Save the file to the UPLOAD_FOLDER
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file.save(file_path)
+        
+        # Process the CSV file and add products
+        process_csv(file_path)
+        
+        return jsonify({"message": "File uploaded and processed successfully"}), 200
+    else:
+        return jsonify({"error": "Invalid file type, please upload a CSV file"}), 400
+
+@app.route('/promotions', methods=['POST'])
+def add_promotion():
+    data = request.get_json()
+    promotion = create_promotion(
+        product_id=data['product_id'],
+        discount_percentage=data['discount_percentage'],
+        start_date=data['start_date'],
+        end_date=data['end_date']
+    )
+    return jsonify(promotion.to_dict()), 201
+
+@app.route('/coupons', methods=['POST'])
+def add_coupon():
+    data = request.get_json()
+    coupon = create_coupon(
+        code=data['code'],
+        discount_percentage=data['discount_percentage'],
+        user_tier=data['user_tier'],
+        max_uses=data.get('max_uses'),
+        expires_at=data['expires_at']
+    )
+    return jsonify(coupon.to_dict()), 201
+
+@app.route('/products/<int:product_id>', methods=['GET'])
+def get_product_route(product_id):
+    product = get_product_with_promotion(product_id)
+    if product:
+        return jsonify(product.to_dict()), 200
+    else:
+        return jsonify({"error": "Product not found"}), 404
 
 
 if __name__ == '__main__':

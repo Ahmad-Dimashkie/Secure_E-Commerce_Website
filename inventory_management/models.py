@@ -92,19 +92,65 @@ class Subcategory(db.Model):
             "category_id": self.category_id
         }
 
+
 class Product(db.Model):
     __tablename__ = 'product'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     subcategory_id = db.Column(db.Integer, db.ForeignKey('subcategory.id'), nullable=False)
+    description = db.Column(db.Text)
+    specifications = db.Column(db.Text)
+    price = db.Column(db.Float, nullable=False)  # original price
     stock_level = db.Column(db.Integer, default=0)
-    price = db.Column(db.Float, nullable=False)
+    image_url = db.Column(db.String(255))
+    discounted_price = db.Column(db.Float, nullable=True)  # Or db.Numeric if that's your preference
 
     def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
             "subcategory_id": self.subcategory_id,
+            "description": self.description,
+            "specifications": self.specifications,
+            "price": self.price,
             "stock_level": self.stock_level,
-            "price": self.price
+            "discounted_price": self.discounted_price,
+            "image_url": self.image_url
+        }
+
+        
+class Promotion(db.Model):
+    __tablename__ = 'promotion'
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    discount_percentage = db.Column(db.Float, nullable=False)  # e.g., 10% discount
+    start_date = db.Column(db.DateTime, nullable=False)
+    end_date = db.Column(db.DateTime, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "product_id": self.product_id,
+            "discount_percentage": self.discount_percentage,
+            "start_date": self.start_date,
+            "end_date": self.end_date
+        }
+
+class Coupon(db.Model):
+    __tablename__ = 'coupon'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), unique=True, nullable=False)  # e.g., "WELCOME10"
+    discount_percentage = db.Column(db.Float, nullable=False)
+    user_tier = db.Column(db.String(50), nullable=False)  # e.g., "regular", "premium"
+    max_uses = db.Column(db.Integer, nullable=True)  # max uses allowed, null for unlimited
+    expires_at = db.Column(db.DateTime, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "code": self.code,
+            "discount_percentage": self.discount_percentage,
+            "user_tier": self.user_tier,
+            "max_uses": self.max_uses,
+            "expires_at": self.expires_at
         }

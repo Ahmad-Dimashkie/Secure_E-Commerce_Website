@@ -1,9 +1,12 @@
 from models import db, Inventory, Alert
 from datetime import datetime
 from utils import send_low_stock_alert
-from models import db, Sales, Inventory
+from models import db, Sales, Inventory, Product
 from sqlalchemy import func
 from datetime import timedelta
+from sqlalchemy.exc import SQLAlchemyError
+import pandas as pd
+
 
 def create_inventory_item(product_id, warehouse_id, stock_level, threshold=10):
     new_item = Inventory(product_id=product_id, warehouse_id=warehouse_id, stock_level=stock_level, threshold=threshold)
@@ -44,7 +47,6 @@ def delete_inventory_item(product_id, warehouse_id):
         return True
     return False
 
-# Additional helper functions
 def get_inventory_by_warehouse(warehouse_id):
     return Inventory.query.filter_by(warehouse_id=warehouse_id).all()
 
@@ -103,7 +105,6 @@ def get_low_stock_items():
     return Inventory.query.filter(Inventory.stock_level < Inventory.threshold).all()
 
 def calculate_inventory_turnover():
-    # Calculate total quantity sold per product
     total_sales = db.session.query(
         Sales.product_id,
         func.sum(Sales.quantity_sold).label('total_quantity_sold')
@@ -169,3 +170,124 @@ def predict_future_demand(product_id, days=30):
         "product_id": product_id,
         "predicted_demand_next_30_days": future_demand
     }
+    
+def create_product(name, subcategory_id, description, specifications, price, stock_level=0, image_url=None):
+    new_product = Product(
+        name=name,
+        subcategory_id=subcategory_id,
+        description=description,
+        specifications=specifications,
+        price=price,
+        stock_level=stock_level,
+        image_url=image_url
+    )
+    db.session.add(new_product)
+    try:
+        db.session.commit()
+        return new_product
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print("Error creating product:", e)
+        return None
+
+
+# Get all products
+def get_all_products():
+    return Product.query.all()
+
+
+# Get a product by ID
+def get_product_by_id(product_id):
+    return Product.query.get(product_id)
+
+
+# Update a product by ID
+def update_product(product_id, **kwargs):
+    product = get_product_by_id(product_id)
+    if product:
+        for key, value in kwargs.items():
+            setattr(product, key, value)
+        try:
+            db.session.commit()
+            return product
+        except SQLAlchemyError as e: # type: ignore
+            db.session.rollback()
+            print("Error updating product:", e)
+            return None
+    return None
+
+
+# Delete a product by ID
+def delete_product(product_id):
+    product = get_product_by_id(product_id)
+    if product:
+        db.session.delete(product)
+        try:
+            db.session.commit()
+            return True
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            print("Error deleting product:", e)
+    return False
+def process_csv(file_path):
+    # Specify the encoding to avoid UnicodeDecodeError
+    data = pd.read_csv(file_path, encoding='ISO-8859-1')  # Or try 'latin1' or 'windows-1252' if needed
+
+    # Loop through each row and create products
+    for index, row in data.iterrows():
+        new_product = Product(
+            name=row['name'],
+            subcategory_id=row['subcategory_id'],
+            stock_level=row['stock_level'],
+            price=row['price'],
+            description=row.get('description', ''),
+            specifications=row.get('specifications', ''),
+            image_url=row.get('image_url', '')
+        )
+        db.session.add(new_product)
+    
+    # Commit all new products to the database
+    db.session.commit()
+
+
+from datetime import datetime
+from models import db, Promotion, Coupon
+
+def create_promotion(product_id, discount_percentage, start_date, end_date):
+    promotion = Promotion(
+        product_id=product_id,
+        discount_percentage=discount_percentage,
+        start_date=start_date,
+        end_date=end_date
+    )
+    db.session.add(promotion)
+    db.session.commit()
+    return promotion
+
+def create_coupon(code, discount_percentage, user_tier, max_uses, expires_at):
+    coupon = Coupon(
+        code=code,
+        discount_percentage=discount_percentage,
+        user_tier=user_tier,
+        max_uses=max_uses,
+        expires_at=expires_at
+    )
+    db.session.add(coupon)
+    db.session.commit()
+    return coupon
+
+def get_product_with_promotion(product_id):
+    product = Product.query.get(product_id)
+    promotion = Promotion.query.filter_by(
+        product_id=product_id
+    ).filter(
+        Promotion.start_date <= datetime.utcnow(),
+        Promotion.end_date >= datetime.utcnow()
+    ).first()
+
+    if promotion:
+        product.discounted_price = product.price * (1 - promotion.discount_percentage / 100)
+    else:
+        product.discounted_price = product.price  # No promotion applied
+
+    return product
