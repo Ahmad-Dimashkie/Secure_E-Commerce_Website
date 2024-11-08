@@ -6,6 +6,40 @@ from sqlalchemy import func
 from datetime import timedelta
 from sqlalchemy.exc import SQLAlchemyError
 import pandas as pd
+import socket
+from urllib.parse import urlparse
+
+
+ALLOWED_DOMAINS = ['example.com', 'trusted-cdn.com', 'localhost', '127.0.0.1']  # Add localhost for testing now cause im writing the code
+def is_valid_url(url):
+    try:
+        # Parse the URL
+        parsed_url = urlparse(url)
+        
+        # Ensure scheme is either http or https
+        if parsed_url.scheme not in ['http', 'https']:
+            return False
+        
+        # Resolve the host to an IP and allow localhost
+        host_ip = socket.gethostbyname(parsed_url.hostname)
+        if any([
+            host_ip.startswith('127.'),
+            host_ip.startswith('10.'),
+            host_ip.startswith('172.16.'),
+            host_ip.startswith('192.168.')
+        ]) and parsed_url.hostname not in ['localhost', '127.0.0.1']:
+            return False
+        
+        # Ensure the domain is in the allowed list
+        domain = parsed_url.hostname
+        if domain not in ALLOWED_DOMAINS:
+            return False
+
+        return True
+    except Exception as e:
+        print(f"URL validation error: {e}")
+        return False
+
 
 
 def create_inventory_item(product_id, warehouse_id, stock_level, threshold=10):
@@ -172,22 +206,26 @@ def predict_future_demand(product_id, days=30):
     }
     
 def create_product(name, subcategory_id, description, specifications, price, stock_level=0, image_url=None):
-    new_product = Product(
-        name=name,
-        subcategory_id=subcategory_id,
-        description=description,
-        specifications=specifications,
-        price=price,
-        stock_level=stock_level,
-        image_url=image_url
-    )
-    db.session.add(new_product)
     try:
+        # Validate and sanitize image_url for SSRF protection
+        if image_url and not is_valid_url(image_url):
+            raise ValueError("Invalid or untrusted URL for image")
+
+        new_product = Product(
+            name=name,
+            subcategory_id=int(subcategory_id),
+            description=description[:1000],
+            specifications=specifications[:1000],
+            price=max(0, float(price)),
+            stock_level=max(0, int(stock_level)),
+            image_url=image_url
+        )
+        db.session.add(new_product)
         db.session.commit()
         return new_product
-    except SQLAlchemyError as e:
+    except (SQLAlchemyError, ValueError) as e:
         db.session.rollback()
-        print("Error creating product:", e)
+        print(f"Error creating product: {e}")
         return None
 
 
@@ -229,26 +267,31 @@ def delete_product(product_id):
             db.session.rollback()
             print("Error deleting product:", e)
     return False
+
+
 def process_csv(file_path):
-    # Specify the encoding to avoid UnicodeDecodeError
-    data = pd.read_csv(file_path, encoding='ISO-8859-1')  # Or try 'latin1' or 'windows-1252' if needed
-
-    # Loop through each row and create products
-    for index, row in data.iterrows():
-        new_product = Product(
-            name=row['name'],
-            subcategory_id=row['subcategory_id'],
-            stock_level=row['stock_level'],
-            price=row['price'],
-            description=row.get('description', ''),
-            specifications=row.get('specifications', ''),
-            image_url=row.get('image_url', '')
-        )
-        db.session.add(new_product)
-    
-    # Commit all new products to the database
-    db.session.commit()
-
+    try:
+        data = pd.read_csv(file_path, encoding='ISO-8859-1')
+        for _, row in data.iterrows():
+            # Validate and sanitize inputs, including URL validation for image_url
+            image_url = row.get('image_url', '')
+            if not is_valid_url(image_url):
+                image_url = ''  # Optionally set to a default image URL if invalid
+            
+            new_product = Product(
+                name=row['name'],
+                subcategory_id=int(row['subcategory_id']),
+                stock_level=max(0, int(row['stock_level'])),
+                price=max(0, float(row['price'])),
+                description=row.get('description', '')[:1000],
+                specifications=row.get('specifications', '')[:1000],
+                image_url=image_url
+            )
+            db.session.add(new_product)
+        db.session.commit()
+    except (SQLAlchemyError, ValueError, pd.errors.ParserError) as e:
+        db.session.rollback()
+        print(f"Error processing CSV file: {e}")
 
 from datetime import datetime
 from models import db, Promotion, Coupon
