@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from sqlalchemy.orm import validates
 
 db = SQLAlchemy()
 
@@ -11,6 +12,16 @@ class Inventory(db.Model):
     stock_level = db.Column(db.Integer, default=0)
     threshold = db.Column(db.Integer, default=10)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @validates('product_id', 'warehouse_id', 'stock_level', 'threshold')
+    def validate_inventory_fields(self, key, value):
+        if key in ['product_id', 'warehouse_id', 'stock_level', 'threshold'] and not isinstance(value, int):
+            raise ValueError(f"{key} must be an integer")
+        if key == 'stock_level' and value < 0:
+            raise ValueError("Stock level cannot be negative")
+        if key == 'threshold' and value < 0:
+            raise ValueError("Threshold cannot be negative")
+        return value
 
     def to_dict(self):
         return {
@@ -28,7 +39,7 @@ class Warehouse(db.Model):
     location = db.Column(db.String(255), nullable=False)
     inventory_items = db.relationship('Inventory', backref='warehouse')
 
-# Optional: Log alerts in a table if you want to display alerts on the dashboard
+# Alert class with validations
 class Alert(db.Model):
     __tablename__ = 'alerts'
     id = db.Column(db.Integer, primary_key=True)
@@ -36,7 +47,13 @@ class Alert(db.Model):
     warehouse_id = db.Column(db.Integer, nullable=False)
     alert_message = db.Column(db.Text, nullable=False)
     alert_time = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
+    @validates('alert_message')
+    def validate_alert_message(self, key, value):
+        if not value:
+            raise ValueError("Alert message cannot be empty")
+        return value
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -45,7 +62,6 @@ class Alert(db.Model):
             "alert_message": self.alert_message,
             "alert_time": self.alert_time
         }
-        
 
 class Sales(db.Model):
     __tablename__ = 'sales'
@@ -55,6 +71,12 @@ class Sales(db.Model):
     quantity_sold = db.Column(db.Integer, nullable=False)
     sale_date = db.Column(db.DateTime, default=datetime.utcnow)
 
+    @validates('quantity_sold')
+    def validate_quantity_sold(self, key, value):
+        if value < 0:
+            raise ValueError("Quantity sold cannot be negative")
+        return value
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -63,7 +85,6 @@ class Sales(db.Model):
             "quantity_sold": self.quantity_sold,
             "sale_date": self.sale_date
         }
-
 
 class Category(db.Model):
     __tablename__ = 'category'
@@ -92,7 +113,6 @@ class Subcategory(db.Model):
             "category_id": self.category_id
         }
 
-
 class Product(db.Model):
     __tablename__ = 'product'
     id = db.Column(db.Integer, primary_key=True)
@@ -100,10 +120,18 @@ class Product(db.Model):
     subcategory_id = db.Column(db.Integer, db.ForeignKey('subcategory.id'), nullable=False)
     description = db.Column(db.Text)
     specifications = db.Column(db.Text)
-    price = db.Column(db.Float, nullable=False)  # original price
+    price = db.Column(db.Float, nullable=False)
     stock_level = db.Column(db.Integer, default=0)
     image_url = db.Column(db.String(255))
-    discounted_price = db.Column(db.Float, nullable=True)  # Or db.Numeric if that's your preference
+    discounted_price = db.Column(db.Float, nullable=True)
+
+    @validates('name', 'description', 'specifications', 'price', 'stock_level', 'discounted_price')
+    def validate_product_fields(self, key, value):
+        if key in ['price', 'discounted_price'] and (value is not None and value < 0):
+            raise ValueError(f"{key} cannot be negative")
+        if key == 'stock_level' and value < 0:
+            raise ValueError("Stock level cannot be negative")
+        return value
 
     def to_dict(self):
         return {
@@ -118,14 +146,19 @@ class Product(db.Model):
             "image_url": self.image_url
         }
 
-        
 class Promotion(db.Model):
     __tablename__ = 'promotion'
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
-    discount_percentage = db.Column(db.Float, nullable=False)  # e.g., 10% discount
+    discount_percentage = db.Column(db.Float, nullable=False)
     start_date = db.Column(db.DateTime, nullable=False)
     end_date = db.Column(db.DateTime, nullable=False)
+
+    @validates('discount_percentage')
+    def validate_discount_percentage(self, key, value):
+        if value < 0 or value > 100:
+            raise ValueError("Discount percentage must be between 0 and 100")
+        return value
 
     def to_dict(self):
         return {
@@ -139,11 +172,19 @@ class Promotion(db.Model):
 class Coupon(db.Model):
     __tablename__ = 'coupon'
     id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(50), unique=True, nullable=False)  # e.g., "WELCOME10"
+    code = db.Column(db.String(50), unique=True, nullable=False)
     discount_percentage = db.Column(db.Float, nullable=False)
-    user_tier = db.Column(db.String(50), nullable=False)  # e.g., "regular", "premium"
-    max_uses = db.Column(db.Integer, nullable=True)  # max uses allowed, null for unlimited
+    user_tier = db.Column(db.String(50), nullable=False)
+    max_uses = db.Column(db.Integer, nullable=True)
     expires_at = db.Column(db.DateTime, nullable=False)
+
+    @validates('code', 'discount_percentage', 'user_tier', 'max_uses')
+    def validate_coupon_fields(self, key, value):
+        if key == 'discount_percentage' and (value < 0 or value > 100):
+            raise ValueError("Discount percentage must be between 0 and 100")
+        if key == 'max_uses' and (value is not None and value < 0):
+            raise ValueError("Max uses cannot be negative")
+        return value
 
     def to_dict(self):
         return {
