@@ -25,19 +25,25 @@ def create_order(customer_id, items, customer_email):
 
 def update_order_status(order_id, new_status):
     order = Order.query.get(order_id)
-    if order:
-        if not is_valid_status_transition(order.status, new_status):
-            return {"error": f"Invalid status transition from '{order.status}' to '{new_status}'"}
-        
-        previous_status = order.status
-        order.status = new_status
-        order.updated_at = datetime.utcnow()
-        db.session.commit()
+    if not order:
+        return {"error": "Order not found"}
 
-        send_notification(order.customer_email, "Order Status Update", 
-                          f"Your order #{order.id} status has changed from '{previous_status}' to '{new_status}'.")
-        return order
-    return None
+    # Define valid transitions for each current status
+    valid_transitions = {
+        "pending": ["processing", "shipped"],  # Add "shipped" if skipping "processing" is allowed
+        "processing": ["shipped"],
+        "shipped": ["delivered"]
+    }
+
+    # Check if the transition is allowed
+    if new_status not in valid_transitions.get(order.status, []):
+        return {"error": f"Invalid status transition from '{order.status}' to '{new_status}'"}
+
+    # Update status if valid
+    order.status = new_status
+    db.session.commit()
+    return order
+
 
 
 from models import db, Order, ReturnRequest, Invoice
@@ -46,35 +52,33 @@ from sqlalchemy.exc import IntegrityError
 
 def create_return_request(order_id, reason, request_type):
     try:
-        if request_type not in ['refund', 'replacement']:
-            return {"error": "Invalid request type"}, 400
-
         return_request = ReturnRequest(order_id=order_id, reason=reason, request_type=request_type)
         db.session.add(return_request)
         db.session.commit()
-        return return_request
+
+        # Return as dictionary instead of object
+        return return_request.to_dict()
     except IntegrityError as e:
         db.session.rollback()
         return {"error": "Failed to create return request", "details": str(e)}
 
+
 def process_return_request(return_id, action):
-    return_request = ReturnRequest.query.get(return_id)
-    if not return_request:
-        return {"error": "Return request not found"}, 404
+    try:
+        return_request = ReturnRequest.query.get(return_id)
+        if not return_request:
+            return {"error": "Return request not found"}
+        
+        # Update the status based on action
+        return_request.status = 'approved' if action == 'approve' else 'denied'
+        db.session.commit()
+        
+        # Return the updated return request as a dictionary
+        return return_request.to_dict()
+    except Exception as e:
+        db.session.rollback()
+        return {"error": str(e)}
 
-    if action == 'approve':
-        return_request.status = 'approved'
-        if return_request.request_type == 'refund':
-            refund_order(return_request.order_id)
-            return_request.status = 'refunded'
-        elif return_request.request_type == 'replacement':
-            # Replacement logic here, e.g., initiate a new order or mark for shipment
-            return_request.status = 'replaced'
-    else:
-        return {"error": "Invalid action"}, 400
-
-    db.session.commit()
-    return return_request
 
 def refund_order(order_id):
     order = Order.query.get(order_id)

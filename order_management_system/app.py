@@ -22,31 +22,40 @@ def get_orders():
     orders = Order.query.all()
     return jsonify([order.to_dict() for order in orders]), 200
 
-@app.route('/order', methods=['POST'])
+@app.route('/create_order', methods=['POST'])
 def create_order_route():
     data = request.get_json()
-
     if not validate_input(data, ['customer_id', 'customer_email', 'items']):
         return jsonify({"error": "Invalid data provided"}), 400
 
     # Creating order with basic validation on items
     order = create_order(data['customer_id'], data['items'], data['customer_email'])
-    if 'error' in order:
+    
+    # Check if create_order returned an error dictionary
+    if isinstance(order, dict) and 'error' in order:
         return jsonify(order), 400
+
+    # Otherwise, assume order is an Order object and serialize it to JSON
     return jsonify(order.to_dict()), 201
+
 
 @app.route('/order/<int:order_id>', methods=['PATCH'])
 def update_order_status_route(order_id):
     data = request.get_json()
     new_status = data.get('status')
-
+    
     if new_status not in ["pending", "processing", "shipped", "delivered"]:
         return jsonify({"error": "Invalid status value"}), 400
 
     order = update_order_status(order_id, new_status)
-    if order:
-        return jsonify(order.to_dict()), 200
-    return jsonify({"error": "Order not found"}), 404
+
+    # Check if `order` is a dictionary (indicating an error) or an `Order` object
+    if isinstance(order, dict):
+        return jsonify(order), 400  # Return the error dictionary if it's not an Order
+
+    # Otherwise, `order` is an Order object, so we can safely call `to_dict()`
+    return jsonify(order.to_dict()), 200
+
 
 @app.route('/order/<int:order_id>/invoice', methods=['POST'])
 def generate_invoice_route(order_id):
@@ -80,34 +89,43 @@ def after_request_callback(response):
     return response
 
 
+
 @app.route('/return', methods=['POST'])
 def create_return_request_route():
     data = request.get_json()
 
-    if 'order_id' not in data or 'reason' not in data or 'request_type' not in data:
-        return jsonify({"error": "Invalid data provided"}), 400
+    # Check if the necessary data fields are present
+    if not all(field in data for field in ["order_id", "reason", "request_type"]):
+        return jsonify({"error": "Missing data fields"}), 400
 
-    if data['request_type'] not in ['refund', 'replacement']:
-        return jsonify({"error": "Invalid request type"}), 400
+    # Call the function to create the return request and store the result
+    result = create_return_request(data['order_id'], data['reason'], data['request_type'])
+    
+    # If result contains an error, return it
+    if 'error' in result:
+        return jsonify(result), 400
 
-    return_request = create_return_request(data['order_id'], data['reason'], data['request_type'])
-    if 'error' in return_request:
-        return jsonify(return_request), 400
-    return jsonify(return_request.to_dict()), 201
+    # Return the successful result with to_dict() applied
+    return jsonify(result), 201
 
-@app.route('/return/<int:return_id>', methods=['PATCH'])
+@app.route('/return/<int:return_id>/status', methods=['PUT'])
 def update_return_request_status(return_id):
-    data = request.get_json()
-    action = data.get('action')
-
+    action = request.json.get("action")
     if action not in ['approve', 'deny']:
         return jsonify({"error": "Invalid action"}), 400
 
+    # Call the function to process the return request
     updated_request = process_return_request(return_id, action)
-    if 'error' in updated_request:
+    
+    # Check if `updated_request` is an error dictionary
+    if isinstance(updated_request, dict) and 'error' in updated_request:
         return jsonify(updated_request), 400
-    return jsonify(updated_request.to_dict()), 200
+
+    # Directly return the dictionary since it's already JSON-compatible
+    return jsonify(updated_request), 200
+
+
 
 # Run the application
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5001)  
