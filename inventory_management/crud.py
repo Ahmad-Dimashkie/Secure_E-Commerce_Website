@@ -73,13 +73,15 @@ def update_inventory_item(product_id, warehouse_id, stock_change):
     else:
         return None
 
-def delete_inventory_item(product_id, warehouse_id):
-    item = get_inventory_item(product_id, warehouse_id)
+def delete_inventory_item(item_id):
+    item = Inventory.query.get(item_id)
     if item:
         db.session.delete(item)
         db.session.commit()
         return True
     return False
+
+
 
 def get_inventory_by_warehouse(warehouse_id):
     return Inventory.query.filter_by(warehouse_id=warehouse_id).all()

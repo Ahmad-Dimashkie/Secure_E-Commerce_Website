@@ -54,12 +54,13 @@ def update_inventory_route(item_id):
 
 @app.route('/inventory/<int:item_id>', methods=['DELETE'])
 def delete_inventory_route(item_id):
-    data = request.get_json()
-    success = delete_inventory_item(data['product_id'], data['warehouse_id'])
+    success = delete_inventory_item(item_id)
     if success:
         return jsonify({"message": "Item deleted"}), 200
     else:
         return jsonify({"error": "Inventory item not found"}), 404
+
+
 
 # New route to get low stock items
 @app.route('/inventory/low-stock', methods=['GET'])
