@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from sqlalchemy.orm import validates
+from sqlalchemy.orm import relationship
 
 db = SQLAlchemy()
 
@@ -124,6 +125,8 @@ class Product(db.Model):
     stock_level = db.Column(db.Integer, default=0)
     image_url = db.Column(db.String(255))
     discounted_price = db.Column(db.Float, nullable=True)
+    promotions = relationship('Promotion', backref='product', lazy=True)
+
 
     @validates('name', 'description', 'specifications', 'price', 'stock_level', 'discounted_price')
     def validate_product_fields(self, key, value):

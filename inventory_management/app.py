@@ -7,6 +7,7 @@ from crud import calculate_inventory_turnover, get_most_popular_products, predic
 from utils import send_low_stock_alert
 from crud import create_product, get_all_products, get_product_by_id, update_product, delete_product, process_csv, create_promotion, create_coupon
 import os
+from flask_cors import CORS
 
 
 app = Flask(__name__)
@@ -20,6 +21,10 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Ensure the folder exists when the app starts
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+
+CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+
+
 
 @app.route('/inventory', methods=['GET'])
 def get_inventory_route():
@@ -52,15 +57,13 @@ def update_inventory_route(item_id):
     db.session.commit()
     return jsonify(item.to_dict()), 200
 
-@app.route('/inventory/<int:item_id>', methods=['DELETE'])
-def delete_inventory_route(item_id):
-    success = delete_inventory_item(item_id)
+@app.route('/inventory/<int:item_id>/<int:warehouse_id>', methods=['DELETE'])
+def delete_inventory_route(item_id, warehouse_id):
+    success = delete_inventory_item(item_id, warehouse_id)
     if success:
         return jsonify({"message": "Item deleted"}), 200
     else:
         return jsonify({"error": "Inventory item not found"}), 404
-
-
 
 # New route to get low stock items
 @app.route('/inventory/low-stock', methods=['GET'])
@@ -221,6 +224,9 @@ def get_product_route(product_id):
         return jsonify(product.to_dict()), 200
     else:
         return jsonify({"error": "Product not found"}), 404
+
+if __name__ == '__main__':
+    app.run(debug=True)
 
 
 if __name__ == '__main__':

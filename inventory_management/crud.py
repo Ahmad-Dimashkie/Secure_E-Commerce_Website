@@ -73,6 +73,7 @@ def update_inventory_item(product_id, warehouse_id, stock_change):
     else:
         return None
 
+# In crud.py
 def delete_inventory_item(item_id):
     item = Inventory.query.get(item_id)
     if item:
@@ -321,18 +322,32 @@ def create_coupon(code, discount_percentage, user_tier, max_uses, expires_at):
     db.session.commit()
     return coupon
 
+from datetime import datetime
+from sqlalchemy.orm import joinedload
+
 def get_product_with_promotion(product_id):
-    product = Product.query.get(product_id)
-    promotion = Promotion.query.filter_by(
-        product_id=product_id
-    ).filter(
-        Promotion.start_date <= datetime.utcnow(),
-        Promotion.end_date >= datetime.utcnow()
+    # Fetch the product with its promotions
+    product = db.session.query(Product).options(joinedload('promotions')).filter(Product.id == product_id).first()
+    
+    if not product:
+        return None
+
+    # Get the current date and time
+    current_time = datetime.utcnow()
+
+    # Find an active promotion for this product (if any)
+    active_promotion = db.session.query(Promotion).filter(
+        Promotion.product_id == product_id,
+        Promotion.start_date <= current_time,
+        Promotion.end_date >= current_time
     ).first()
 
-    if promotion:
-        product.discounted_price = product.price * (1 - promotion.discount_percentage / 100)
+    # If there's an active promotion, calculate the discounted price
+    if active_promotion:
+        discount = active_promotion.discount_percentage
+        product.discounted_price = product.price * (1 - discount / 100)
     else:
-        product.discounted_price = product.price  # No promotion applied
+        # No active promotion; set discounted_price to None
+        product.discounted_price = None
 
     return product
