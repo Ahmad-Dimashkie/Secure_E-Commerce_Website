@@ -40,7 +40,9 @@ def login():
     if user and check_password_hash(user.password_hash, data['password']):
         access_token = create_access_token(identity=user.id)
         logging.info(f"User '{user.username}' logged in")
-        return jsonify(access_token=access_token), 200
+        role = Role.query.get(user.role_id).name  # Get the role name
+        logging.info(f"User '{user.username}' logged in with role '{role}'")
+        return jsonify(access_token=access_token, role=role), 200
     logging.warning(f"Invalid login attempt for user '{data['username']}'")
     return jsonify({"error": "Invalid credentials"}), 401
 
