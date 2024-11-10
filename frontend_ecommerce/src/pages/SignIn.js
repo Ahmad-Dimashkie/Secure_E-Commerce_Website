@@ -29,7 +29,7 @@ const SignIn = () => {
 
       // Save token in localStorage
       localStorage.setItem("authToken", access_token);
-
+      console.log("Token received:", access_token.token);
       // Redirect to dashboard or homepage
       console.log("Sign-in successful");
       window.location.href = "/admin-dashboard"; // Adjust as needed
