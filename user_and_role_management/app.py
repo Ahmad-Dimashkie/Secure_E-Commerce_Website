@@ -8,6 +8,7 @@ import logging
 from werkzeug.security import check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_cors import CORS
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -81,3 +82,4 @@ def customer_segmentation():
 
 if __name__ == '__main__':
     app.run(debug=True)
+    CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}) #specifically grant access to the frontend
