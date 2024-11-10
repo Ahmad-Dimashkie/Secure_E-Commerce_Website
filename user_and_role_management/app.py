@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt
 from models import db, User, Role, Customer
 from crud import create_user, get_user, create_role, assign_permission_to_role, get_customer_by_id
 from auth import authorize
@@ -38,11 +38,9 @@ def login():
     data = request.get_json()
     user = User.query.filter_by(username=data['username']).first()
     if user and check_password_hash(user.password_hash, data['password']):
-        access_token = create_access_token(identity=user.id)
+        access_token = create_access_token(identity=user.id, additional_claims={"role_id": user.role_id})
         logging.info(f"User '{user.username}' logged in")
-        role = Role.query.get(user.role_id).name  # Get the role name
-        logging.info(f"User '{user.username}' logged in with role '{role}'")
-        return jsonify(access_token=access_token, role=role), 200
+        return jsonify(access_token=access_token), 200
     logging.warning(f"Invalid login attempt for user '{data['username']}'")
     return jsonify({"error": "Invalid credentials"}), 401
 
@@ -82,6 +80,18 @@ def customer_segmentation():
     customers = Customer.query.filter(Customer.engagement_score >= min_score).all()
     logging.info(f"Retrieved {len(customers)} customers with engagement score >= {min_score}")
     return jsonify([customer.to_dict() for customer in customers]), 200
+
+
+@app.route('/admin', methods=['GET'])
+@jwt_required()
+def admin_dashboard():
+    claims = get_jwt()
+    role_id = claims.get("role_id")
+
+    if role_id != 1:
+        return jsonify({"error": "Access forbidden"}), 403  # Forbidden for non-admins
+
+    return jsonify({"message": "Welcome to the Admin Dashboard"}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
