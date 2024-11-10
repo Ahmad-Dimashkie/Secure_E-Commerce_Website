@@ -1,16 +1,23 @@
-import React from "react";
-import { Navigate } from "react-router-dom";
+import React, { useContext } from "react";
+import { Navigate, Outlet } from "react-router-dom";
+import AuthProvider from "../services/authContext";
 
-const ProtectedRoute = ({ children, allowedRoles }) => {
-  const token = localStorage.getItem("authToken");
-  const userRole = localStorage.getItem("userRole");
+const ProtectedRoute = ({ requiredRole }) => {
+  const { user, loading } = useContext(AuthProvider);
 
-  // Check if the user is authenticated and has the right role
-  if (!token || !allowedRoles.includes(userRole)) {
-    return <Navigate to="/" />; // Redirect to Homepage if not authorized
+  if (loading) {
+    return <div>Loading...</div>; // Or a spinner component
   }
 
-  return children; // Render the protected component if authorized
+  if (!user) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  if (requiredRole && user.role !== requiredRole) {
+    return <Navigate to="/" replace />; // Redirect if role doesn't match
+  }
+
+  return <Outlet />;
 };
 
 export default ProtectedRoute;
