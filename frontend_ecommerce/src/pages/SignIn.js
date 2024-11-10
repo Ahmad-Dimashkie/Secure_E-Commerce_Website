@@ -8,6 +8,7 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 const SignIn = () => {
@@ -15,6 +16,7 @@ const SignIn = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleSignIn = async () => {
     setLoading(true);
@@ -25,18 +27,26 @@ const SignIn = () => {
         username: username,
         password: password,
       });
-      const { access_token } = response.data;
+      if (response.data && response.data.access_token) {
+        const token = response.data.access_token;
+        const role = response.data.role; // Get the role from the response
 
-      // Save token in localStorage
-      localStorage.setItem("authToken", access_token);
-      // Redirect to dashboard or homepage
-      console.log("Sign-in successful");
-      window.location.href = "/admin-dashboard"; // Adjust as needed
+        // Store the token in localStorage or sessionStorage
+        localStorage.setItem("authToken", token);
+
+        // Redirect based on role
+        if (role === "Admin") {
+          navigate("/admin");
+        } else {
+          navigate("/"); // Redirect non-admins to the home page
+        }
+      } else {
+        setError("No token received. Please try again.");
+      }
     } catch (err) {
-      setError("Invalid username or password.");
-      console.error("Sign-in error:", err.response?.data || err.message);
-    } finally {
-      setLoading(false);
+      setError(
+        err.response?.data?.error || "Failed to sign in. Please try again."
+      );
     }
   };
   return (
