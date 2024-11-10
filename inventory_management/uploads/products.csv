@@ -1,0 +1,11 @@
+name,subcategory_id,description,specifications,price,stock_level,image_url
+iPhone 14,1,Latest Apple smartphone,"6GB RAM, 128GB Storage",999.99,100,https://example.com/iphone14.jpg
+Samsung Galaxy S21,1,Samsung’s flagship smartphone,"8GB RAM, 128GB Storage",799.99,80,https://example.com/galaxys21.jpg
+iPad Pro,2,Apple’s high-performance tablet,"8GB RAM, 256GB Storage, 11"" Display",1099.99,50,https://example.com/ipadpro.jpg
+Dell XPS 13,3,Compact and powerful laptop,"16GB RAM, 512GB SSD",1499.99,60,https://example.com/dellxps13.jpg
+MacBook Air M1,3,Lightweight laptop with M1 chip,"8GB RAM, 256GB SSD",999.99,70,https://example.com/macbookair.jpg
+Sony WH-1000XM4,4,Noise-canceling over-ear headphones,"Bluetooth, 30-hour battery life",349.99,120,https://example.com/sonyheadphones.jpg
+Bose SoundLink Speaker,4,Portable Bluetooth speaker,"Bluetooth, 12-hour battery life",199.99,50,https://example.com/bosespeaker.jpg
+GoPro HERO9,5,Action camera with 5K video recording,"Waterproof, 20MP photos, Voice Control",399.99,30,https://example.com/goprohero9.jpg
+Amazon Echo Dot,6,Smart speaker with Alexa,"Alexa-enabled, compact size",49.99,150,https://example.com/echodot.jpg
+Logitech MX Master 3,7,Ergonomic wireless mouse,"Bluetooth, USB-C rechargeable",99.99,100,https://example.com/mxmaster3.jpg
