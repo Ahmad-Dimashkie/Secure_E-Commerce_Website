@@ -37,7 +37,7 @@ const SignIn = () => {
 
         // Store the token in localStorage (or implement secure cookie storage)
         localStorage.setItem("authToken", token);
-
+        console.log("Logged in as", role === 1 ? "admin" : "user");
         // Redirect based on role
         if (role === 1) {
           navigate("/admin"); // Admin role redirects to admin dashboard
