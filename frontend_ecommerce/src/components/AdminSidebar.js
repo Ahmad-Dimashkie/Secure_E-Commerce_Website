@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   List,
@@ -17,7 +17,7 @@ import {
   ExitToApp,
 } from "@mui/icons-material";
 import "../styles/AdminSidebar.css";
-import { AuthContext } from "../services/authContext";
+import AuthContext from "../services/authContext";
 
 const AdminSidebar = () => {
   const { logout } = useContext(AuthContext);
