@@ -23,21 +23,20 @@ const SignIn = () => {
     setError("");
 
     try {
-      // Send login request to the backend
+      // Send login request
       await api.post("/login", { username, password });
 
-      // Validate the token and fetch user role
+      // Get the role by validating the token
       const response = await api.get("/validate-token");
       const role = response.data.role;
 
-      // Redirect based on role
+      // Redirect based on the role
       if (role === 1) {
         navigate("/admin"); // Admin role
       } else {
-        navigate("/"); // Non-admin users
+        navigate("/"); // Non-admins
       }
     } catch (err) {
-      // Capture error messages
       setError(
         err.response?.data?.error || "Failed to sign in. Please try again."
       );
