@@ -9,6 +9,10 @@ import Cart from "./pages/Cart";
 import AdminDashboard from "./pages/AdminDashboard";
 import SignIn from "./pages/SignIn";
 import ProtectedRoute from "./services/ProtectedRoute";
+import AdminOrders from "./pages/AdminOrders";
+import AdminProducts from "./pages/AdminProducts";
+import AdminUsers from "./pages/AdminUsers";
+import AdminSales from "./pages/AdminSales";
 function App() {
   return (
     <Routes>
@@ -20,8 +24,22 @@ function App() {
       <Route path="/admin" element={<ProtectedRoute requiredRole={1} />}>
         <Route index element={<AdminDashboard />} />
       </Route>
+      <Route path="/admin/orders" element={<ProtectedRoute requiredRole={1} />}>
+        <Route index element={<AdminOrders />} />
+      </Route>
+      <Route
+        path="/admin/products"
+        element={<ProtectedRoute requiredRole={1} />}
+      >
+        <Route index element={<AdminProducts />} />
+      </Route>
+      <Route path="/admin/users" element={<ProtectedRoute requiredRole={1} />}>
+        <Route index element={<AdminUsers />} />
+      </Route>
+      <Route path="/admin/sales" element={<ProtectedRoute requiredRole={1} />}>
+        <Route index element={<AdminSales />} />
+      </Route>
     </Routes>
   );
 }
-
 export default App;
