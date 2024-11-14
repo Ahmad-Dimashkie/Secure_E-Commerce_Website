@@ -11,7 +11,7 @@ from flask_migrate import Migrate
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}) #specifically grant access to the frontend
+CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}, supports_credentials=True)  # specifically grant access to the frontend
 app.config.from_object(Config)
 
 # Initialize extensions
@@ -22,7 +22,7 @@ migrate = Migrate(app, db)
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
-#Register
+# Register
 @app.route('/register', methods=['POST'])
 def register_user():
     try:
@@ -34,7 +34,7 @@ def register_user():
         logging.error(f"Error registering user: {e}")
         return jsonify({"error": "Error registering user"}), 500
 
-#Login
+# Login
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -51,7 +51,7 @@ def login():
     logging.warning(f"Invalid login attempt for user '{data['username']}'")
     return jsonify({"error": "Invalid credentials"}), 401
 
-#Validate token
+# Validate token
 @app.route('/validate-token', methods=['GET'])
 @jwt_required()
 def validate_token():
@@ -59,7 +59,7 @@ def validate_token():
     role_id = claims.get("role_id")
     return jsonify({"role": role_id}), 200
 
-# Refresh token endpoint to generate a new access token using a valid refresh token
+# Refresh token
 @app.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
@@ -69,7 +69,16 @@ def refresh():
     response.set_cookie("access_token", new_access_token, httponly=True, secure=True, samesite="Lax")
     return response, 200
 
-#Create a role
+# Logout
+@app.route('/logout', methods=['POST'])
+def logout():
+    response = make_response(jsonify({"message": "Logout successful"}))
+    response.delete_cookie("access_token", samesite="Lax")
+    response.delete_cookie("refresh_token", samesite="Lax")
+    logging.info("User logged out")
+    return response, 200
+
+# Create a role
 @app.route('/roles', methods=['POST'])
 @jwt_required()
 @authorize('Admin')
@@ -79,7 +88,7 @@ def create_role_endpoint():
     logging.info(f"Role '{role.name}' created")
     return jsonify(role.to_dict()), 201
 
-#Assign Permission to Role
+# Assign Permission to Role
 @app.route('/roles/<int:role_id>/permissions', methods=['POST'])
 @jwt_required()
 @authorize('Admin')
@@ -89,13 +98,5 @@ def add_permission(role_id):
     logging.info(f"Permission '{permission.name}' added to role ID {role_id}")
     return jsonify({"message": "Permission added to role"}), 201
 
-#Decode Token
-@jwt_required()
-def decode_token():
-    claims = get_jwt()
-    return jsonify(claims), 200
-
-
 if __name__ == '__main__':
     app.run(debug=True)
-    
