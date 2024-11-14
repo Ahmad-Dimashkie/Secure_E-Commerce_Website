@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   Container,
   TextField,
@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import AuthContext from "../services/authContext";
 
 const SignIn = () => {
   const [username, setUsername] = useState("");
@@ -17,6 +18,7 @@ const SignIn = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { validateToken } = useContext(AuthContext);
 
   const handleSignIn = async () => {
     setLoading(true);
@@ -26,16 +28,14 @@ const SignIn = () => {
       // Send login request
       await api.post("/login", { username, password });
 
-      // Get the role by validating the token
-      const response = await api.get("/validate-token");
-      const role = response.data.role;
-      console.log(role);
+      // Validate the token to determine the role
+      const role = await validateToken();
 
-      // Redirect based on the role
+      // Redirect based on role
       if (role === 1) {
         navigate("/admin"); // Admin role
       } else {
-        navigate("/"); // Non-admins
+        navigate("/"); // Default
       }
     } catch (err) {
       setError(

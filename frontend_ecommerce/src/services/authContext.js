@@ -7,20 +7,29 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const validateToken = async () => {
+    try {
+      const response = await api.get("/validate-token"); // X-CSRF-TOKEN automatically added
+      setUser({ role: response.data.role });
+      return response.data.role; // Return the role for direct use if needed
+    } catch (error) {
+      setUser(null);
+      throw new Error("Token validation failed");
+    }
+  };
+
   useEffect(() => {
-    const validateToken = async () => {
+    const validate = async () => {
       try {
-        const response = await api.get("/validate-token");
-        setUser({ role: response.data.role });
-      } catch (error) {
-        console.error("Token validation failed:", error);
-        setUser(null);
+        await validateToken();
+      } catch {
+        // No-op: Let the user handle the result (e.g., sign-in page redirection)
       } finally {
         setLoading(false);
       }
     };
 
-    validateToken();
+    validate();
   }, []);
 
   const logout = async () => {
@@ -33,7 +42,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, logout }}>
+    <AuthContext.Provider value={{ user, setUser, validateToken, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );

@@ -5,15 +5,15 @@ const api = axios.create({
   withCredentials: true, // Allow cookies to be sent with requests
 });
 
-// Intercept requests to include CSRF tokens
 api.interceptors.request.use((config) => {
+  // Retrieve CSRF token from cookies
   const csrfToken = document.cookie
     .split("; ")
     .find((row) => row.startsWith("csrf_access_token="))
     ?.split("=")[1];
 
   if (csrfToken) {
-    config.headers["X-CSRF-TOKEN"] = csrfToken; // Add CSRF token to headers
+    config.headers["X-CSRF-TOKEN"] = csrfToken;
   }
 
   return config;
