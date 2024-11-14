@@ -1,0 +1,34 @@
+/* App Container Styling */
+.app-container {
+  display: flex;
+  height: 100vh;
+  background-color: #f4f6f9; /* Background for main content */
+}
+
+/* Main Content Area */
+.main-content {
+  margin-left: 250px; /* Matches the sidebar width */
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  transition: margin 0.3s; /* Smooth transition for sidebar collapse */
+  background-color: #f4f6f9; /* Consistent background color */
+}
+
+/* Responsive Styling for Smaller Screens */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 80px; /* Adjust for collapsed sidebar */
+    padding: 10px;
+  }
+}
+
+/* Main content additional styling */
+.main-content h1, .main-content h2, .main-content h3, .main-content h4, .main-content h5, .main-content h6 {
+  margin-top: 0;
+  color: #111827; /* Darker shade for text */
+}
+
+.main-content p {
+  color: #374151; /* Mid-gray for regular text */
+}

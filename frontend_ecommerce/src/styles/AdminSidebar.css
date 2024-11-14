@@ -1,0 +1,118 @@
+/* Sidebar Container */
+.sidebar {
+  background-color: #111827;
+  color: #e5e7eb;
+  width: 250px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Ensures the logout button stays at the bottom */
+  position: fixed;
+  padding: 20px 0;
+  transition: width 0.3s;
+  overflow: hidden; /* Prevents overflow */
+}
+
+.sidebar.collapsed {
+  width: 80px;
+}
+
+/* Sidebar Header */
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 15px;
+}
+
+/* Navigation Menu */
+.sidebar .nav-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1; /* Ensures the nav-menu takes up available space */
+  overflow-y: auto; /* Allows scrolling if needed */
+}
+
+.sidebar .nav-menu li {
+  margin: 10px 0;
+}
+
+.sidebar .nav-menu li a {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  color: #e5e7eb;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.sidebar .nav-menu li a.active-link {
+  background-color: #3b82f6;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.sidebar .nav-menu li a:hover {
+  background-color: #1e40af;
+}
+
+.sidebar.collapsed .nav-menu li a {
+  justify-content: center;
+}
+
+/* Logout Button */
+.logout-container {
+  padding: 0 20px;
+  margin-bottom: 50px; /* Ensures spacing from the bottom */
+}
+
+.logout-button {
+  width: 100%; /* Takes the full width of the container */
+  padding: 10px;
+  border-radius: 8px;
+  background-color: #dc2626;
+  color: #ffffff;
+  text-align: center;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  transition: all 0.3s;
+}
+
+.logout-button:hover {
+  background-color: #b91c1c;
+}
+
+.logout-button-icon {
+  margin-right: 8px;
+  font-size: 1.2rem;
+}
+
+.sidebar.collapsed .logout-container {
+  display: flex;
+  justify-content: center;
+}
+
+.sidebar.collapsed .logout-button {
+  padding: 8px 15px;
+  width: 80%; /* Fits within the collapsed sidebar */
+  margin: 10px auto;
+}
+
+/* Sidebar Brand Styling */
+.brand {
+  color: #3b82f6;
+}
+
+.expanded .brand {
+  display: block;
+}
+
+.collapsed .brand {
+  display: none;
+}

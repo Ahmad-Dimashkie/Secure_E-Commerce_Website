@@ -1,0 +1,34 @@
+/* Styling for the card */
+.dashboard-card {
+  padding: 20px;
+  background-color: #3b82f6; /* Base color */
+  color: #ffffff;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease-in-out;
+}
+
+.dashboard-card .inner {
+  margin-bottom: 15px;
+}
+
+.dashboard-card h3 {
+  font-size: 36px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.dashboard-card p {
+  font-size: 18px;
+}
+
+.dashboard-card .icon {
+  font-size: 48px;
+  opacity: 0.1;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}

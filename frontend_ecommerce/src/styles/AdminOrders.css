@@ -1,0 +1,58 @@
+.orders-container {
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.admin-page-container {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  flex: 0 0 250px;
+}
+
+.content-container {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.table-container {
+  margin-top: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.header-title {
+  margin-bottom: 20px;
+}
+
+.content-container {
+  margin-left: 250px; /* Adjusted for sidebar width */
+  padding: 20px;
+  background-color: #f4f6f9;
+  min-height: 100vh;
+}
+
+.table-container {
+  margin-top: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 250px; /* Adjust as necessary */
+  background-color: #111827;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  background-color: #f4f6f9;
+}
