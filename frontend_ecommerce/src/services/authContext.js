@@ -1,72 +1,52 @@
 import React, { createContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
+import api from "../services/api"; // Your Axios instance
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [authToken, setAuthToken] = useState(null);
   const [user, setUser] = useState(null); // Store user data (e.g., role, username)
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Function to handle login and save token
-  const login = (token) => {
-    localStorage.setItem("authToken", token);
-    setAuthToken(token);
-
-    // Decode the token to get user details
-    const decodedToken = jwtDecode(token);
-    setUser({
-      id: decodedToken.sub,
-      role: decodedToken.role_id, // Adjust to match your backend's payload
-    });
-
-    // Redirect based on role
-    if (decodedToken.role_id === 1) {
-      navigate("/admin"); // Admin dashboard
-    } else {
-      navigate("/"); // Home page
-    }
-  };
-
   // Function to handle logout
-  const logout = () => {
-    localStorage.removeItem("authToken");
-    setAuthToken(null);
+  const logout = async () => {
+    try {
+      await api.post("/logout"); // If your backend supports a logout endpoint
+    } catch (err) {
+      console.error("Error during logout:", err);
+    }
     setUser(null);
     navigate("/signin"); // Redirect to login page
   };
 
-  // On app load, check if there's a token in localStorage
+  // Fetch user data on app load
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (token) {
-      setAuthToken(token);
-
-      // Decode the token and set user info
+    const fetchUser = async () => {
       try {
-        const decodedToken = jwtDecode(token);
+        const response = await api.get("/validate-token");
         setUser({
-          id: decodedToken.sub,
-          role: decodedToken.role_id,
+          id: response.data.id,
+          role: response.data.role, // Adjust to match your backend response
         });
       } catch (err) {
-        console.error("Invalid token:", err);
-        logout(); // Logout if the token is invalid
+        console.error("Failed to validate token:", err);
+        setUser(null);
+        navigate("/signin"); // Redirect to login if validation fails
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
-  }, []);
+    };
+
+    fetchUser();
+  }, [navigate]);
 
   // Provide these values to the entire app
   return (
     <AuthContext.Provider
       value={{
-        authToken,
         user,
         loading,
-        login,
         logout,
       }}
     >

@@ -9,7 +9,6 @@ import {
   Alert,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
 import api from "../services/api";
 
 const SignIn = () => {
@@ -24,30 +23,21 @@ const SignIn = () => {
     setError("");
 
     try {
-      const response = await api.post("/login", {
-        username: username,
-        password: password,
-      });
-      if (response.data && response.data.access_token) {
-        const token = response.data.access_token;
+      // Send login request to the backend
+      await api.post("/login", { username, password });
 
-        // Decode JWT to extract role and identity
-        const decodedToken = jwtDecode(token);
-        const role = decodedToken.role_id; // Ensure your backend includes `role_id` in the JWT payload
+      // Validate the token and fetch user role
+      const response = await api.get("/validate-token");
+      const role = response.data.role;
 
-        // Store the token in localStorage (or implement secure cookie storage)
-        localStorage.setItem("authToken", token);
-        console.log("Logged in as", role === 1 ? "admin" : "user");
-        // Redirect based on role
-        if (role === 1) {
-          navigate("/admin"); // Admin role redirects to admin dashboard
-        } else {
-          navigate("/"); // Non-admins redirect to the home page
-        }
+      // Redirect based on role
+      if (role === 1) {
+        navigate("/admin"); // Admin role
       } else {
-        setError("Invalid response from server. Please try again.");
+        navigate("/"); // Non-admin users
       }
     } catch (err) {
+      // Capture error messages
       setError(
         err.response?.data?.error || "Failed to sign in. Please try again."
       );
@@ -62,6 +52,11 @@ const SignIn = () => {
         <Typography variant="h4" gutterBottom>
           Sign In
         </Typography>
+        {error && (
+          <Alert severity="error" sx={{ width: "100%", mb: 2 }}>
+            {error}
+          </Alert>
+        )}
         <TextField
           label="Username"
           variant="outlined"
@@ -69,6 +64,9 @@ const SignIn = () => {
           margin="normal"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSignIn();
+          }}
         />
         <TextField
           label="Password"
@@ -78,6 +76,9 @@ const SignIn = () => {
           margin="normal"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSignIn();
+          }}
         />
         <Button
           variant="contained"
