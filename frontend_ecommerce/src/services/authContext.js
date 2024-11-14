@@ -13,6 +13,7 @@ export const AuthProvider = ({ children }) => {
         const response = await api.get("/validate-token");
         setUser({ role: response.data.role });
       } catch (error) {
+        console.error("Token validation failed:", error);
         setUser(null);
       } finally {
         setLoading(false);

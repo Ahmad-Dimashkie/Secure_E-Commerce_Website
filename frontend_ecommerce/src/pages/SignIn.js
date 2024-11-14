@@ -29,6 +29,7 @@ const SignIn = () => {
       // Get the role by validating the token
       const response = await api.get("/validate-token");
       const role = response.data.role;
+      console.log(role);
 
       // Redirect based on the role
       if (role === 1) {
