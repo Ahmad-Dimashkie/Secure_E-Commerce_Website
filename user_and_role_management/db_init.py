@@ -9,7 +9,7 @@ with app.app_context():
         {"name": "Admin"},
         {"name": "Inventory Manager"},
         {"name": "Order Manager"},
-        {"name": "Customer Support"}
+        {"name": "Product Manager"}
     ]
 
     # Add roles to the database
