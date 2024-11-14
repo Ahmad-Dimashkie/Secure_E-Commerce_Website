@@ -89,18 +89,20 @@ def login():
 
 # Validate Token
 @app.route("/validate-token", methods=["GET"])
-@jwt_required()  # Requires a valid access token
+@jwt_required()
 def validate_token():
     try:
-        # Extract claims from the JWT
         claims = get_jwt()
-        role_id = claims.get("role_id")  # Retrieve role from the claims
-        
-        # Return the role to the client
+        logging.info(f"JWT claims: {claims}")
+        csrf_token = request.headers.get("X-CSRF-TOKEN")
+        logging.info(f"Incoming CSRF Token: {csrf_token}")
+        role_id = claims.get("role_id")
         return jsonify({"role": role_id}), 200
     except Exception as e:
-        logging.error(f"Error validating token: {e}")
+        logging.error(f"Token validation error: {e}")
         return jsonify({"error": "Invalid or expired token"}), 401
+
+
 # Refresh Token
 @app.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
