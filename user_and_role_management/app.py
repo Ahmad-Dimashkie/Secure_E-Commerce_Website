@@ -89,28 +89,37 @@ def login():
 
 # Validate Token
 @app.route("/validate-token", methods=["GET"])
-@jwt_required()
+@jwt_required()  # Requires a valid access token
 def validate_token():
-    claims = get_jwt()
-    role_id = claims.get("role_id")
-    return jsonify({"role": role_id}), 200
-
+    try:
+        # Extract claims from the JWT
+        claims = get_jwt()
+        role_id = claims.get("role_id")  # Retrieve role from the claims
+        
+        # Return the role to the client
+        return jsonify({"role": role_id}), 200
+    except Exception as e:
+        logging.error(f"Error validating token: {e}")
+        return jsonify({"error": "Invalid or expired token"}), 401
 # Refresh Token
 @app.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
-    try:
-        incoming_csrf = request.headers.get("X-CSRF-TOKEN")
-        logging.info(f"Incoming CSRF Token: {incoming_csrf}")
-        current_user = get_jwt_identity()
-        new_access_token = create_access_token(identity=current_user)
+    incoming_csrf = request.headers.get("X-CSRF-TOKEN")
+    logging.info(f"Incoming CSRF Token: {incoming_csrf}")
+    current_user = get_jwt_identity()
+    new_access_token = create_access_token(identity=current_user)
 
-        response = make_response(jsonify({"message": "Token refreshed"}))
-        set_cookie(response, "access_token", new_access_token)
-        return response, 200
-    except Exception as e:
-        logging.error(f"Error refreshing token: {e}")
-        return jsonify({"error": "Failed to refresh token"}), 401
+    # Decode the new token to extract CSRF
+    csrf_access_token = decode_token(new_access_token)["csrf"]
+
+    response = make_response(jsonify({"message": "Token refreshed"}))
+    set_cookie(response, "access_token", new_access_token)
+
+    # Add the new CSRF token in a cookie
+    response.set_cookie("csrf_access_token", csrf_access_token, secure=True, samesite="Lax")
+
+    return response, 200
 
 # Logout
 @app.route("/logout", methods=["POST"])
