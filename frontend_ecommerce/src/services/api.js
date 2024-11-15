@@ -14,14 +14,9 @@ api.interceptors.request.use((config) => {
     .split("; ")
     .find((row) => row.startsWith("csrf_access_token="))
     ?.split("=")[1];
-
   if (csrfToken) {
-    config.headers["X-CSRF-TOKEN"] = csrfToken; // Attach the CSRF token
-    console.log("CSRF Token attached:", csrfToken);
-  } else {
-    console.error("CSRF Token not found in cookies.");
+    config.headers["X-CSRF-TOKEN"] = csrfToken;
   }
-
   return config;
 });
 
