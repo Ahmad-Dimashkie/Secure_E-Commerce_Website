@@ -34,8 +34,9 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post("/logout");
-      setUser(null);
+      await api.post("/logout"); // Clear cookies on the backend
+      setUser(null); // Clear the frontend user state
+      window.location.href = "/signin"; // Force redirection to login
     } catch (error) {
       console.error("Logout failed:", error);
     }
