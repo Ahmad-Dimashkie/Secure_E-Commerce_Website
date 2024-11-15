@@ -79,8 +79,8 @@ def login():
         set_cookie(response, "refresh_token", refresh_token)
 
         # Set CSRF tokens in cookies
-        response.set_cookie("csrf_access_token", csrf_access_token, secure=True, samesite="Lax")
-        response.set_cookie("csrf_refresh_token", csrf_refresh_token, secure=True, samesite="Lax")
+        response.set_cookie("csrf_access_token", csrf_access_token, secure=True, httponly=True, samesite="Lax")
+        response.set_cookie("csrf_refresh_token", csrf_refresh_token, secure=True, httponly=True, samesite="Lax")
 
         logging.info(f"User '{user.username}' logged in")
         return response, 200
@@ -94,14 +94,11 @@ def validate_token():
     try:
         claims = get_jwt()
         logging.info(f"JWT claims: {claims}")
-        csrf_token = request.headers.get("X-CSRF-TOKEN")
-        logging.info(f"Incoming CSRF Token: {csrf_token}")
         role_id = claims.get("role_id")
         return jsonify({"role": role_id}), 200
     except Exception as e:
         logging.error(f"Token validation error: {e}")
         return jsonify({"error": "Invalid or expired token"}), 401
-
 
 # Refresh Token
 @app.route('/refresh', methods=['POST'])
