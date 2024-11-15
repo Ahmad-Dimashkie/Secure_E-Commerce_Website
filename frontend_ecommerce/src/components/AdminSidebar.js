@@ -20,7 +20,7 @@ import "../styles/AdminSidebar.css";
 import AuthContext from "../services/authContext";
 
 const AdminSidebar = () => {
-  const { user, logout } = useContext(AuthContext); // Access `user` from AuthContext
+  const { user, logout } = useContext(AuthContext);
   const [isOpen, setIsOpen] = useState(true);
   const location = useLocation();
 
@@ -43,39 +43,32 @@ const AdminSidebar = () => {
     color: isActive ? "#ffffff" : "#e5e7eb",
   });
 
-  // Define the menu items with role-based access
-  const menuItems = [
-    {
-      label: "Dashboard",
-      path: "/admin",
-      icon: <Dashboard />,
-      roles: ["Admin", "ProductManager", "OrderManager", "InventoryManager"], // Accessible by all roles
-    },
-    {
-      label: "Orders",
-      path: "/admin/orders",
-      icon: <ShoppingCart />,
-      roles: ["Admin", "OrderManager"], // Accessible by Admin and OrderManager
-    },
-    {
-      label: "Products",
-      path: "/admin/products",
-      icon: <Store />,
-      roles: ["Admin", "ProductManager"], // Accessible by Admin and ProductManager
-    },
-    {
-      label: "Users",
-      path: "/admin/users",
-      icon: <People />,
-      roles: ["Admin"], // Accessible only by Admin
-    },
-    {
-      label: "Inventory",
-      path: "/admin/inventory",
-      icon: <PieChart />,
-      roles: ["Admin", "InventoryManager"], // Accessible by Admin and InventoryManager
-    },
-  ];
+  // Define navigation links based on role
+  const navigationLinks = {
+    1: [
+      // Admin
+      { to: "/admin", label: "Dashboard", icon: <Dashboard /> },
+      { to: "/admin/orders", label: "Orders", icon: <ShoppingCart /> },
+      { to: "/admin/products", label: "Products", icon: <Store /> },
+      { to: "/admin/users", label: "Users", icon: <People /> },
+      { to: "/admin/inventory", label: "Inventory", icon: <PieChart /> },
+    ],
+    2: [
+      // OrderManager
+      { to: "/admin/orders", label: "Orders", icon: <ShoppingCart /> },
+    ],
+    3: [
+      // ProductManager
+      { to: "/admin/products", label: "Products", icon: <Store /> },
+    ],
+    4: [
+      // InventoryManager
+      { to: "/admin/inventory", label: "Inventory", icon: <PieChart /> },
+    ],
+  };
+
+  // Fallback links if the user's role isn't recognized
+  const links = navigationLinks[user?.role] || [];
 
   return (
     <div className={`sidebar ${isOpen ? "expanded" : "collapsed"}`}>
@@ -86,28 +79,18 @@ const AdminSidebar = () => {
         </IconButton>
       </div>
       <List className="nav-menu">
-        {menuItems.map((item) => {
-          // Only show the menu item if the user's role is allowed
-          if (user && item.roles.includes(user.role)) {
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                style={navLinkStyles(item.path)}
-              >
-                {({ isActive }) => (
-                  <>
-                    <ListItemIcon>
-                      {React.cloneElement(item.icon, iconStyle(isActive))}
-                    </ListItemIcon>
-                    {isOpen && <ListItemText primary={item.label} />}
-                  </>
-                )}
-              </NavLink>
-            );
-          }
-          return null; // Do not render the menu item if the user's role is not allowed
-        })}
+        {links.map(({ to, label, icon }) => (
+          <NavLink key={to} to={to} style={navLinkStyles(to)}>
+            {({ isActive }) => (
+              <>
+                <ListItemIcon>
+                  {React.cloneElement(icon, iconStyle(isActive))}
+                </ListItemIcon>
+                {isOpen && <ListItemText primary={label} />}
+              </>
+            )}
+          </NavLink>
+        ))}
       </List>
       <div className="logout-container">
         <Button

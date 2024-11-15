@@ -18,26 +18,29 @@ const SignIn = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { validateToken } = useContext(AuthContext);
+  const { validateToken } = useContext(AuthContext); // Access validateToken
 
   const handleSignIn = async () => {
     setLoading(true);
     setError("");
 
     try {
-      // Send login request
+      console.log("Sending login request...");
       await api.post("/login", { username, password });
 
-      // Validate the token to determine the role
-      const role = await validateToken();
+      console.log("Login successful, validating token...");
+      const role = await validateToken(); // Call validateToken from context
+      console.log("Token validated, role:", role);
 
-      // Redirect based on role
-      if (role === 1) {
-        navigate("/admin"); // Admin role
+      if ([1, 2, 3, 4].includes(role)) {
+        console.log("Redirecting to /admin...");
+        navigate("/admin");
       } else {
-        navigate("/"); // Default
+        console.error("Unauthorized role:", role);
+        setError("You do not have permission to access the admin dashboard.");
       }
     } catch (err) {
+      console.error("Error during login or token validation:", err);
       setError(
         err.response?.data?.error || "Failed to sign in. Please try again."
       );
