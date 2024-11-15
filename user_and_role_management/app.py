@@ -72,7 +72,10 @@ def login():
     data = request.get_json()
     user = User.query.filter_by(username=data["username"]).first()
     if user and check_password_hash(user.password_hash, data["password"]):
-        access_token = create_access_token(identity=user.id, additional_claims={"role_id": user.role_id})
+        access_token = create_access_token(identity=user.id, additional_claims={
+        "role_id": user.role_id,
+        "username": user.username,  # Optional: Include more claims as needed
+    })
         refresh_token = create_refresh_token(identity=user.id)
 
         # Decode tokens to extract CSRF tokens
@@ -101,8 +104,15 @@ def validate_token():
         logging.info(f"Incoming cookies: {request.cookies}")
         claims = get_jwt()
         role_id = claims.get("role_id")
-        logging.info(f"JWT claims: {claims}")
-        return jsonify({"role": role_id}), 200
+        user_id = get_jwt_identity()
+        username = claims.get("username")  # Add this if included in the token
+
+        logging.info(f"Validating token for user ID {user_id} with role ID {role_id} and username '{username}'")
+        return jsonify({
+            "id": user_id,
+            "username": username,
+            "role": role_id,
+        }), 200
     except Exception as e:
         logging.error(f"Token validation error: {e}")
         return jsonify({"error": "Invalid or expired token"}), 401
@@ -156,6 +166,29 @@ def add_permission(role_id):
     permission = assign_permission_to_role(role_id, data["permission_name"])
     logging.info(f"Permission '{permission.name}' added to role ID {role_id}")
     return jsonify({"message": "Permission added to role"}), 201
+
+
+# Admin orders endpoint
+@app.route("/admin/orders", methods=["GET"])
+@jwt_required()
+@authorize(required_roles=[1, 3])  # Admin and OrderManager
+def admin_orders():
+    return jsonify({"message": "Orders data"})
+
+# Admin products endpoint
+@app.route("/admin/products", methods=["GET"])
+@jwt_required()
+@authorize(required_roles=[1, 4])  # Admin and ProductManager
+def admin_products():
+    return jsonify({"message": "Products data"})
+
+# Admin inventory endpoint
+@app.route("/admin/inventory", methods=["GET"])
+@jwt_required()
+@authorize(required_roles=[1, 2])  # Admin and ProductManager
+def admin_inventory():
+    return jsonify({"message": "Inventory data"})
+
 
 # JWT Exception Handler
 @app.errorhandler(Exception)
