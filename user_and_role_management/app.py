@@ -133,8 +133,7 @@ def logout():
     response = make_response(jsonify({"message": "Logout successful"}))
     cookies_to_delete = ["access_token", "refresh_token", "csrf_access_token", "csrf_refresh_token"]
     for cookie in cookies_to_delete:
-        response.delete_cookie(cookie, path="/", samesite="None")
-    logging.info("User logged out")
+        response.set_cookie(cookie, '', expires=0, samesite="None", secure=True, httponly=True)
     return response, 200
 
 
