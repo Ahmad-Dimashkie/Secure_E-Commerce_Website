@@ -1,7 +1,6 @@
 // src/App.js
-import { React, useEffect } from "react";
+import { React } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
 import Home from "./pages/Home";
 import ProductList from "./pages/ProductList";
 import ProductDetails from "./pages/ProductDetails";
@@ -13,6 +12,7 @@ import AdminOrders from "./pages/AdminOrders";
 import AdminProducts from "./pages/AdminProducts";
 import AdminUsers from "./pages/AdminUsers";
 import AdminInventory from "./pages/AdminInventory";
+
 function App() {
   return (
     <Routes>
@@ -21,28 +21,48 @@ function App() {
       <Route path="/products" element={<ProductList />} />
       <Route path="/products/:id" element={<ProductDetails />} />
       <Route path="/cart" element={<Cart />} />
-      <Route path="/admin" element={<ProtectedRoute requiredRole={1} />}>
+
+      {/* Admin Dashboard accessible by all roles */}
+      <Route
+        path="/admin"
+        element={<ProtectedRoute allowedRoles={[1, 2, 3, 4]} />}
+      >
         <Route index element={<AdminDashboard />} />
       </Route>
-      <Route path="/admin/orders" element={<ProtectedRoute requiredRole={1} />}>
+
+      {/* Admin Orders accessible by Admin and OrderManager */}
+      <Route
+        path="/admin/orders"
+        element={<ProtectedRoute allowedRoles={[1, 2]} />}
+      >
         <Route index element={<AdminOrders />} />
       </Route>
+
+      {/* Admin Products accessible by Admin and ProductManager */}
       <Route
         path="/admin/products"
-        element={<ProtectedRoute requiredRole={1} />}
+        element={<ProtectedRoute allowedRoles={[1, 3]} />}
       >
         <Route index element={<AdminProducts />} />
       </Route>
-      <Route path="/admin/users" element={<ProtectedRoute requiredRole={1} />}>
+
+      {/* Admin Users accessible only by Admin */}
+      <Route
+        path="/admin/users"
+        element={<ProtectedRoute allowedRoles={[1]} />}
+      >
         <Route index element={<AdminUsers />} />
       </Route>
+
+      {/* Admin Inventory accessible by Admin and InventoryManager */}
       <Route
         path="/admin/inventory"
-        element={<ProtectedRoute requiredRole={1} />}
+        element={<ProtectedRoute allowedRoles={[1, 4]} />}
       >
         <Route index element={<AdminInventory />} />
       </Route>
     </Routes>
   );
 }
+
 export default App;
