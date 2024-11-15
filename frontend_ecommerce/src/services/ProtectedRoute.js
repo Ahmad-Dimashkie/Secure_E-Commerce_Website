@@ -13,8 +13,7 @@ const ProtectedRoute = ({ requiredRole }) => {
         const response = await api.get("/validate-token");
         setUser({ role: response.data.role });
       } catch (error) {
-        setUser(null); // If validation fails, redirect to sign-in
-        window.location.href = "/signin";
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -35,4 +34,5 @@ const ProtectedRoute = ({ requiredRole }) => {
 
   return <Outlet />;
 };
+
 export default ProtectedRoute;

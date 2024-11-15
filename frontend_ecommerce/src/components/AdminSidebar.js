@@ -92,13 +92,16 @@ const AdminSidebar = () => {
             </>
           )}
         </NavLink>
-        <NavLink to="/admin/sales" style={navLinkStyles("/admin/sales")}>
+        <NavLink
+          to="/admin/inventory"
+          style={navLinkStyles("/admin/inventory")}
+        >
           {({ isActive }) => (
             <>
               <ListItemIcon>
                 <PieChart style={iconStyle(isActive)} />
               </ListItemIcon>
-              {isOpen && <ListItemText primary="Sales" />}
+              {isOpen && <ListItemText primary="Inventory" />}
             </>
           )}
         </NavLink>

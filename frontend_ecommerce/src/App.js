@@ -12,7 +12,7 @@ import ProtectedRoute from "./services/ProtectedRoute";
 import AdminOrders from "./pages/AdminOrders";
 import AdminProducts from "./pages/AdminProducts";
 import AdminUsers from "./pages/AdminUsers";
-import AdminSales from "./pages/AdminSales";
+import AdminInventory from "./pages/AdminInventory";
 function App() {
   return (
     <Routes>
@@ -36,8 +36,11 @@ function App() {
       <Route path="/admin/users" element={<ProtectedRoute requiredRole={1} />}>
         <Route index element={<AdminUsers />} />
       </Route>
-      <Route path="/admin/sales" element={<ProtectedRoute requiredRole={1} />}>
-        <Route index element={<AdminSales />} />
+      <Route
+        path="/admin/inventory"
+        element={<ProtectedRoute requiredRole={1} />}
+      >
+        <Route index element={<AdminInventory />} />
       </Route>
     </Routes>
   );
