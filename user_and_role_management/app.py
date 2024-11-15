@@ -17,6 +17,9 @@ from werkzeug.security import check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
+import os
+
+
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}, supports_credentials=True)
@@ -38,16 +41,18 @@ migrate = Migrate(app, db)
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
+SECURE_COOKIES = os.getenv("FLASK_ENV") == "production" 
 # Utility to set cookies
 def set_cookie(response, name, value, max_age=None):
     response.set_cookie(
         name,
         value,
         httponly=True,
-        secure=True,
-        samesite="Lax",
+        secure=SECURE_COOKIES,
+        samesite="None",  # Use "None" to allow cross-origin requests
         max_age=max_age,
     )
+
 
 # Register
 @app.route("/register", methods=["POST"])
@@ -79,22 +84,24 @@ def login():
         set_cookie(response, "refresh_token", refresh_token)
 
         # Set CSRF tokens in cookies
-        response.set_cookie("csrf_access_token", csrf_access_token, secure=True, httponly=True, samesite="Lax")
-        response.set_cookie("csrf_refresh_token", csrf_refresh_token, secure=True, httponly=True, samesite="Lax")
+        set_cookie(response, "csrf_access_token", csrf_access_token)
+        set_cookie(response, "csrf_refresh_token", csrf_refresh_token)
 
         logging.info(f"User '{user.username}' logged in")
         return response, 200
     logging.warning(f"Invalid login attempt for user '{data['username']}'")
     return jsonify({"error": "Invalid credentials"}), 401
 
+
 # Validate Token
 @app.route("/validate-token", methods=["GET"])
 @jwt_required()
 def validate_token():
     try:
+        logging.info(f"Incoming cookies: {request.cookies}")
         claims = get_jwt()
-        logging.info(f"JWT claims: {claims}")
         role_id = claims.get("role_id")
+        logging.info(f"JWT claims: {claims}")
         return jsonify({"role": role_id}), 200
     except Exception as e:
         logging.error(f"Token validation error: {e}")
@@ -105,31 +112,31 @@ def validate_token():
 @jwt_required(refresh=True)
 def refresh():
     incoming_csrf = request.headers.get("X-CSRF-TOKEN")
-    logging.info(f"Incoming CSRF Token: {incoming_csrf}")
+    if not incoming_csrf:
+        return jsonify({"error": "CSRF token missing"}), 400
+
     current_user = get_jwt_identity()
     new_access_token = create_access_token(identity=current_user)
-
-    # Decode the new token to extract CSRF
     csrf_access_token = decode_token(new_access_token)["csrf"]
 
     response = make_response(jsonify({"message": "Token refreshed"}))
     set_cookie(response, "access_token", new_access_token)
+    set_cookie(response, "csrf_access_token", csrf_access_token)
 
-    # Add the new CSRF token in a cookie
-    response.set_cookie("csrf_access_token", csrf_access_token, secure=True, samesite="Lax")
-
+    logging.info("Access token refreshed")
     return response, 200
+
 
 # Logout
 @app.route("/logout", methods=["POST"])
 def logout():
     response = make_response(jsonify({"message": "Logout successful"}))
-    response.delete_cookie("access_token", samesite="Lax")
-    response.delete_cookie("refresh_token", samesite="Lax")
-    response.delete_cookie("csrf_access_token", samesite="Lax")
-    response.delete_cookie("csrf_refresh_token", samesite="Lax")
+    cookies_to_delete = ["access_token", "refresh_token", "csrf_access_token", "csrf_refresh_token"]
+    for cookie in cookies_to_delete:
+        response.delete_cookie(cookie, path="/", samesite="None")
     logging.info("User logged out")
     return response, 200
+
 
 # Create a Role
 @app.route("/roles", methods=["POST"])
@@ -154,8 +161,8 @@ def add_permission(role_id):
 # JWT Exception Handler
 @app.errorhandler(Exception)
 def handle_exceptions(e):
-    logging.error(f"Exception occurred: {e}")
-    return jsonify({"error": "Something went wrong. Please try again later."}), 500
+    logging.exception(f"Unhandled exception: {e}")
+    return jsonify({"error": "An internal server error occurred"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
