@@ -8,11 +8,12 @@ from flask_jwt_extended import (
     get_jwt_identity,
     decode_token,
 )
-from models import db, User, Inventory, Alert, Category
+from models import db, User, Inventory, Alert, Category, Order
 from crud_role_and_user import create_user, create_role
 from crud_inventory import get_inventory, create_inventory_item, delete_inventory_item, get_low_stock_items, calculate_inventory_turnover, get_most_popular_products, predict_future_demand
 from crud_product import create_product, get_all_products, update_product, delete_product, process_csv, get_product_with_promotion, create_promotion, create_coupon
-from utils import send_low_stock_alert
+from crud_order import create_order, update_order_status, generate_invoice, create_return_request, process_return_request
+from utils import send_low_stock_alert, validate_input
 from auth import authorize
 from config import Config
 import logging
@@ -435,6 +436,120 @@ def get_product_route(product_id):
         return jsonify({"error": "Product not found"}), 404
 
 ############################################################## Order Management Routes ##############################################
+
+# Get all orders
+app.route('/orders', methods=['GET'])
+@jwt_required()
+@authorize(required_roles=[1, 3])
+def get_orders():
+    orders = Order.query.all()
+    return jsonify([order.to_dict() for order in orders]), 200
+
+# Create an order
+@app.route('/create_order', methods=['POST'])
+def create_order_route():
+    data = request.get_json()
+    if not validate_input(data, ['customer_id', 'customer_email', 'items']):
+        return jsonify({"error": "Invalid data provided"}), 400
+
+    # Creating order with basic validation on items
+    order = create_order(data['customer_id'], data['items'], data['customer_email'])
+    
+    # Check if create_order returned an error dictionary
+    if isinstance(order, dict) and 'error' in order:
+        return jsonify(order), 400
+
+    # Otherwise, assume order is an Order object and serialize it to JSON
+    return jsonify(order.to_dict()), 201
+
+
+# Update order status
+@app.route('/order/<int:order_id>', methods=['PATCH'])
+@jwt_required()
+@authorize(required_roles=[1, 3])
+def update_order_status_route(order_id):
+    data = request.get_json()
+    new_status = data.get('status')
+    
+    if new_status not in ["pending", "processing", "shipped", "delivered"]:
+        return jsonify({"error": "Invalid status value"}), 400
+
+    order = update_order_status(order_id, new_status)
+
+    # Check if `order` is a dictionary (indicating an error) or an `Order` object
+    if isinstance(order, dict):
+        return jsonify(order), 400  # Return the error dictionary if it's not an Order
+
+    # Otherwise, `order` is an Order object, so we can safely call `to_dict()`
+    return jsonify(order.to_dict()), 200
+
+
+# post an invoice of an order
+@app.route('/order/<int:order_id>/invoice', methods=['POST'])
+@jwt_required()
+@authorize(required_roles=[1, 3])
+def generate_invoice_route(order_id):
+    invoice = generate_invoice(order_id)
+    if invoice:
+        return jsonify(invoice.to_dict()), 201
+    return jsonify({"error": "Order not found"}), 404
+
+# Get a specific order
+@app.route('/order/<int:order_id>', methods=['GET'])
+@jwt_required()
+@authorize(required_roles=[1, 3])
+def get_order(order_id):
+    order = Order.query.get(order_id)
+    if order:
+        return jsonify(order.to_dict()), 200
+    return jsonify({"error": "Order not found"}), 404
+
+
+
+# Post a return request
+@app.route('/return', methods=['POST'])
+@jwt_required()
+@authorize(required_roles=[1, 3])
+def create_return_request_route():
+    data = request.get_json()
+
+    # Check if the necessary data fields are present
+    if not all(field in data for field in ["order_id", "reason", "request_type"]):
+        return jsonify({"error": "Missing data fields"}), 400
+
+    # Call the function to create the return request and store the result
+    result = create_return_request(data['order_id'], data['reason'], data['request_type'])
+    
+    # If result contains an error, return it
+    if 'error' in result:
+        return jsonify(result), 400
+
+    # Return the successful result with to_dict() applied
+    return jsonify(result), 201
+
+
+# Update return request status
+@app.route('/return/<int:return_id>/status', methods=['PUT'])
+@jwt_required()
+@authorize(required_roles=[1, 3])
+def update_return_request_status(return_id):
+    action = request.json.get("action")
+    if action not in ['approve', 'deny']:
+        return jsonify({"error": "Invalid action"}), 400
+
+    # Call the function to process the return request
+    updated_request = process_return_request(return_id, action)
+    
+    # Check if `updated_request` is an error dictionary
+    if isinstance(updated_request, dict) and 'error' in updated_request:
+        return jsonify(updated_request), 400
+
+    # Directly return the dictionary since it's already JSON-compatible
+    return jsonify(updated_request), 200
+
+
+##################################################################################################################################################
+
 
 # JWT Exception Handler
 @app.errorhandler(Exception)

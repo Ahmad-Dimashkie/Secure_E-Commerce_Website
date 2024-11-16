@@ -62,3 +62,8 @@ def is_valid_url(url):
         print(f"URL validation error: {e}")
         return False
     
+def validate_input(data, fields):
+    for field in fields:
+        if field not in data or data[field] is None:
+            return False
+    return True
