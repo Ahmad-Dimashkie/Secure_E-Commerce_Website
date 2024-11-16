@@ -11,6 +11,7 @@ import {
   Button,
   Modal,
   TextField,
+  Link,
 } from '@mui/material';
 
 const ProductList = () => {
@@ -126,20 +127,25 @@ const ProductList = () => {
                   ${product.price.toFixed(2)}
                 </Typography>
               </CardContent>
+   
               <Button
-                variant="contained"
-                sx={{
-                  borderRadius: '20px',
-                  margin: '8px',
-                  textTransform: 'none',
-                  backgroundColor: '#6a1b9a', // Purple background
-                  '&:hover': {
-                    backgroundColor: '#4a148c', // Darker purple on hover
-                  },
-                }}
+              component="a"
+              href={`/products/${product.id}`}
+              variant="contained"
+              sx={{
+                borderRadius: "20px",
+                margin: "8px",
+                textTransform: "none",
+                backgroundColor: "#6a1b9a", // Purple background
+                "&:hover": {
+                  backgroundColor: "#4a148c", // Darker purple on hover
+                },
+              }}
               >
-                View Details
+              View Details
               </Button>
+
+
             </Card>
           </Grid>
         ))}
