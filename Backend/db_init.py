@@ -45,22 +45,22 @@ with app.app_context():
             {
                 "username": "admin",
                 "password": generate_password_hash("admin"),
-                "role_id": admin_role.id if admin_role else 1,  # Admin role
+                "role_id":  1,  # Admin role
             },
             {
                 "username": "inventory_manager",
                 "password": generate_password_hash("inventory_manager"),
-                "role_id": inventory_manager_role.id if inventory_manager_role else 2,  # Inventory Manager role
+                "role_id": 4,  # Inventory Manager role
             },
             {
                 "username": "order_manager",
                 "password": generate_password_hash("order_manager"),
-                "role_id": order_manager_role.id if order_manager_role else 3,  # Order Manager role
+                "role_id": 3,  # Order Manager role
             },
             {
                 "username": "product_manager",
                 "password": generate_password_hash("product_manager"),
-                "role_id": product_manager_role.id if product_manager_role else 4,  # Product Manager role
+                "role_id": 2,  # Product Manager role
             }
         ]
 
