@@ -26,3 +26,4 @@ def create_role(name):
         logging.error(f"Failed to create role '{name}': {e}")
         return None
 
+
