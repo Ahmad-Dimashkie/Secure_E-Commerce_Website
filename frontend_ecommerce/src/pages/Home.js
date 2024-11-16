@@ -19,7 +19,7 @@ const Home = () => {
       >
         <Typography variant="h2" gutterBottom>Incredible Prices on All Your Favorite Electronics</Typography>
         <Typography variant="h6" gutterBottom>Shop more for less on selected brands</Typography>
-        <Button component={Link} to="/shop" variant="contained" color="primary" sx={{ marginTop: '20px' }}>
+        <Button component={Link} to="/products" variant="contained" color="primary" sx={{ marginTop: '20px' }}>
           Shop Now
         </Button>
       </Box>
