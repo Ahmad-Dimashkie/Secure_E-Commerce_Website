@@ -41,7 +41,7 @@ function App() {
       {/* Admin Products accessible by Admin and ProductManager */}
       <Route
         path="/admin/products"
-        element={<ProtectedRoute allowedRoles={[1, 4]} />}
+        element={<ProtectedRoute allowedRoles={[1, 2]} />}
       >
         <Route index element={<AdminProducts />} />
       </Route>
@@ -57,7 +57,7 @@ function App() {
       {/* Admin Inventory accessible by Admin and InventoryManager */}
       <Route
         path="/admin/inventory"
-        element={<ProtectedRoute allowedRoles={[1, 2]} />}
+        element={<ProtectedRoute allowedRoles={[1, 4]} />}
       >
         <Route index element={<AdminInventory />} />
       </Route>
