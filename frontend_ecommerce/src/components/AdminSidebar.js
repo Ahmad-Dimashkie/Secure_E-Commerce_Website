@@ -53,11 +53,11 @@ const AdminSidebar = () => {
       { to: "/admin/users", label: "Users", icon: <People /> },
       { to: "/admin/inventory", label: "Inventory", icon: <PieChart /> },
     ],
-    2: [
+    3: [
       // OrderManager
       { to: "/admin/orders", label: "Orders", icon: <ShoppingCart /> },
     ],
-    3: [
+    2: [
       // ProductManager
       { to: "/admin/products", label: "Products", icon: <Store /> },
     ],
