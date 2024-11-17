@@ -1,140 +1,100 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../services/api';
-import { TextField, Button, Box, Typography } from '@mui/material';
+import { Typography, Box, Button, TextField, Grid } from '@mui/material';
 
-const ProductDetails = () => {
-  const { id } = useParams();
+const ProductDetails = ({ products, setProducts }) => {
+  const { id } = useParams(); // Get product ID from URL
   const navigate = useNavigate();
-  const [product, setProduct] = useState(null);
-  const [editMode, setEditMode] = useState(false);
-  const [updatedProduct, setUpdatedProduct] = useState({
-    name: '',
-    description: '',
-    price: '',
-  });
 
-  // Fetch product details
+  const [productDetails, setProductDetails] = useState(null);
+
+  // Fetch product if it is not passed through state
   useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        const response = await api.get(`/products/${id}`);
-        setProduct(response.data);
-        setUpdatedProduct({
-          name: response.data.name,
-          description: response.data.description,
-          price: response.data.price,
-        });
-      } catch (error) {
-        console.error('Error fetching product details:', error);
+    if (products && products.length > 0) {
+      const productFromList = products.find((prod) => prod.id === parseInt(id, 10));
+      if (productFromList) {
+        setProductDetails(productFromList);
+      } else {
+        console.error("Product not found");
+        navigate('/admin/products');
       }
-    };
-    fetchProduct();
-  }, [id]);
+    }
+  }, [products, id, navigate]);
 
-  // Handle input changes for editing
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setUpdatedProduct((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // Handle update product
-  const handleUpdate = async () => {
-    try {
-      const response = await api.put(`/products/${id}`, updatedProduct);
-      setProduct(response.data); // Update the state with new product details
-      setEditMode(false); // Exit edit mode
-    } catch (error) {
-      console.error('Error updating product:', error);
+  const handleUpdateProduct = () => {
+    if (products && setProducts && productDetails) {
+      const updatedProducts = products.map((prod) =>
+        prod.id === productDetails.id ? productDetails : prod
+      );
+      setProducts(updatedProducts);
+      navigate('/admin/products');
     }
   };
 
-  // Handle delete product
-  const handleDelete = async () => {
-    try {
-      await api.delete(`/products/${id}`);
-      navigate('/'); // Redirect to product list after deletion
-    } catch (error) {
-      console.error('Error deleting product:', error);
+  const handleDeleteProduct = () => {
+    if (products && setProducts && productDetails) {
+      const filteredProducts = products.filter((prod) => prod.id !== productDetails.id);
+      setProducts(filteredProducts);
+      navigate('/admin/products');
     }
   };
 
-  if (!product) return <p>Loading...</p>;
+  if (!products || products.length === 0) {
+    return <Typography>Loading product list...</Typography>;
+  }
+
+  if (!productDetails) {
+    return <Typography>Loading product details...</Typography>;
+  }
 
   return (
     <Box sx={{ padding: '20px' }}>
-      {editMode ? (
-        <Box sx={{ maxWidth: '600px', margin: '0 auto' }}>
-          <Typography variant="h4" gutterBottom>
-            Edit Product
-          </Typography>
-          <TextField
-            fullWidth
-            label="Name"
-            name="name"
-            value={updatedProduct.name}
-            onChange={handleInputChange}
-            sx={{ marginBottom: 2 }}
+      <Typography variant="h4" component="h2" sx={{ marginBottom: '20px' }}>
+        Product Details
+      </Typography>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={4}>
+          <img
+            src={productDetails.image ? URL.createObjectURL(productDetails.image) : 'placeholder-image.jpg'}
+            alt={productDetails.name}
+            style={{ width: '100%', maxHeight: '300px', objectFit: 'contain' }}
           />
-          <TextField
-            fullWidth
-            label="Description"
-            name="description"
-            value={updatedProduct.description}
-            onChange={handleInputChange}
-            sx={{ marginBottom: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="Price"
-            name="price"
-            type="number"
-            value={updatedProduct.price}
-            onChange={handleInputChange}
-            sx={{ marginBottom: 2 }}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleUpdate}
-            sx={{ marginRight: 2 }}
-          >
-            Save Changes
-          </Button>
-          <Button variant="outlined" color="secondary" onClick={() => setEditMode(false)}>
-            Cancel
-          </Button>
-        </Box>
-      ) : (
-        <Box>
-          <Typography variant="h4" gutterBottom>
-            {product.name}
-          </Typography>
-          <Typography variant="body1" gutterBottom>
-            {product.description}
-          </Typography>
-          <Typography variant="h6" color="textSecondary">
-            Price: ${product.price.toFixed(2)}
-          </Typography>
-          <Box sx={{ marginTop: 3 }}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => setEditMode(true)}
-              sx={{ marginRight: 2 }}
-            >
-              Edit Product
-            </Button>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={handleDelete}
-            >
-              Delete Product
-            </Button>
+        </Grid>
+        <Grid item xs={12} md={8}>
+          <Box component="form" noValidate autoComplete="off">
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Product Name"
+              value={productDetails.name}
+              onChange={(e) => setProductDetails({ ...productDetails, name: e.target.value })}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Description"
+              value={productDetails.description}
+              onChange={(e) => setProductDetails({ ...productDetails, description: e.target.value })}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Price"
+              type="number"
+              value={productDetails.price}
+              onChange={(e) => setProductDetails({ ...productDetails, price: e.target.value })}
+            />
+            <Box sx={{ marginTop: '20px' }}>
+              <Button variant="contained" color="primary" onClick={handleUpdateProduct}>
+                Save Changes
+              </Button>
+              <Button variant="contained" color="error" sx={{ marginLeft: '10px' }} onClick={handleDeleteProduct}>
+                Delete
+              </Button>
+            </Box>
           </Box>
-        </Box>
-      )}
+        </Grid>
+      </Grid>
     </Box>
   );
 };

@@ -1,4 +1,3 @@
-// src/App.js
 import { React } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
@@ -19,7 +18,13 @@ function App() {
       <Route path="/signin" element={<SignIn />} />
       <Route path="/" element={<Home />} />
       <Route path="/products" element={<ProductList />} />
-      <Route path="/products/:id" element={<ProductDetails />} />
+      {/* ProductDetails restricted to Admin and Product Manager */}
+      <Route
+        path="/admin/products/:id"
+        element={<ProtectedRoute allowedRoles={[1, 2]} />}
+      >
+        <Route index element={<ProductDetails />} />
+      </Route>
       <Route path="/cart" element={<Cart />} />
 
       {/* Admin Dashboard accessible by all roles */}
