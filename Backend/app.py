@@ -318,7 +318,7 @@ def low_stock_items_route():
 # get Categories
 @app.route('/categories', methods=['GET'])
 @jwt_required()
-@authorize(required_roles=[1, 2, 4])
+@authorize(required_roles=[1, 2, 3, 4])
 def get_categories():
     categories = Category.query.all()
     category_data = [category.to_dict() for category in categories]
