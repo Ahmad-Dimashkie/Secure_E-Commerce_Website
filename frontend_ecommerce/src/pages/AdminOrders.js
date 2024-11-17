@@ -35,7 +35,7 @@ const AdminOrders = () => {
     // Fetch all return requests when the component mounts
     const fetchReturns = async () => {
       try {
-        const response = await api.get('/returns');
+        const response = await api.get('/return');
         setReturns(response.data);
       } catch (error) {
         enqueueSnackbar('Failed to fetch returns', { variant: 'error' });
