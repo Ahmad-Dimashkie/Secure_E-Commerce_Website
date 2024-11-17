@@ -12,8 +12,8 @@ import {
   MenuItem,
 } from '@mui/material';
 import AdminSidebar from '../components/AdminSidebar';
-import axios from 'axios';
 import { useSnackbar } from 'notistack';
+import api from '../services/api'; // Use the centralized API instance
 
 const AdminOrders = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -24,33 +24,33 @@ const AdminOrders = () => {
     // Fetch all orders when the component mounts
     const fetchOrders = async () => {
       try {
-        const response = await axios.get('/orders', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+        const response = await api.get('/orders');
         setOrders(response.data);
       } catch (error) {
         enqueueSnackbar('Failed to fetch orders', { variant: 'error' });
         console.error('Error fetching orders:', error);
       }
     };
-    
+
+    // Fetch all return requests when the component mounts
+    const fetchReturns = async () => {
+      try {
+        const response = await api.get('/returns');
+        setReturns(response.data);
+      } catch (error) {
+        enqueueSnackbar('Failed to fetch returns', { variant: 'error' });
+        console.error('Error fetching return requests:', error);
+      }
+    };
+
     fetchOrders();
-  }, []);
+    fetchReturns();
+  }, [enqueueSnackbar]);
 
   // Handle updating order status
   const handleUpdateOrderStatus = async (orderId, status) => {
     try {
-      const response = await axios.patch(
-        `/order/${orderId}`,
-        { status },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      const response = await api.patch(`/order/${orderId}`, { status });
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
           order.id === orderId ? response.data : order
@@ -64,17 +64,9 @@ const AdminOrders = () => {
   };
 
   // Handle updating return status
-  const handleUpdateReturnStatus = async (returnId, status) => {
+  const handleUpdateReturnStatus = async (returnId, action) => {
     try {
-      const response = await axios.put(
-        `/return/${returnId}/status`,
-        { action: status },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      const response = await api.put(`/return/${returnId}/status`, { action });
       setReturns((prevReturns) =>
         prevReturns.map((returnReq) =>
           returnReq.id === returnId ? response.data : returnReq
@@ -90,15 +82,7 @@ const AdminOrders = () => {
   // Handle generating invoice
   const handleGenerateInvoice = async (orderId) => {
     try {
-      const response = await axios.post(
-        `/order/${orderId}/invoice`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      const response = await api.post(`/order/${orderId}/invoice`);
       // Logic to download invoice from response
       const invoiceData = JSON.stringify(response.data, null, 2);
       const blob = new Blob([invoiceData], { type: 'application/json' });
@@ -147,7 +131,7 @@ const AdminOrders = () => {
           <TableHead>
             <TableRow>
               <TableCell>Order ID</TableCell>
-              <TableCell>Customer Name</TableCell>
+              <TableCell>Customer Email</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Total Amount</TableCell>
               <TableCell>Actions</TableCell>
@@ -157,7 +141,7 @@ const AdminOrders = () => {
             {orders.map((order) => (
               <TableRow key={order.id}>
                 <TableCell>{order.id}</TableCell>
-                <TableCell>{order.customerName}</TableCell>
+                <TableCell>{order.customer_email}</TableCell>
                 <TableCell>
                   <Select
                     value={order.status}
@@ -169,7 +153,7 @@ const AdminOrders = () => {
                     <MenuItem value="delivered">Delivered</MenuItem>
                   </Select>
                 </TableCell>
-                <TableCell>${order.totalAmount.toFixed(2)}</TableCell>
+                <TableCell>${order.total_amount.toFixed(2)}</TableCell>
                 <TableCell>
                   <Button variant="contained" onClick={() => handleGenerateInvoice(order.id)}>
                     Generate Invoice
@@ -199,8 +183,8 @@ const AdminOrders = () => {
             {returns.map((returnReq) => (
               <TableRow key={returnReq.id}>
                 <TableCell>{returnReq.id}</TableCell>
-                <TableCell>{returnReq.orderId}</TableCell>
-                <TableCell>{returnReq.productName}</TableCell>
+                <TableCell>{returnReq.order_id}</TableCell>
+                <TableCell>{returnReq.product_name}</TableCell>
                 <TableCell>
                   <Select
                     value={returnReq.status}
@@ -211,14 +195,14 @@ const AdminOrders = () => {
                     <MenuItem value="rejected">Rejected</MenuItem>
                   </Select>
                 </TableCell>
-                <TableCell>{returnReq.requestedAction}</TableCell>
+                <TableCell>{returnReq.requested_action}</TableCell>
                 <TableCell>
-                  {returnReq.status === 'approved' && returnReq.requestedAction === 'refund' && (
+                  {returnReq.status === 'approved' && returnReq.requested_action === 'refund' && (
                     <Button variant="contained" onClick={() => handleIssueRefund(returnReq.id)}>
                       Issue Refund
                     </Button>
                   )}
-                  {returnReq.status === 'approved' && returnReq.requestedAction === 'replacement' && (
+                  {returnReq.status === 'approved' && returnReq.requested_action === 'replacement' && (
                     <Button variant="contained" onClick={() => handleProcessReplacement(returnReq.id)}>
                       Process Replacement
                     </Button>
