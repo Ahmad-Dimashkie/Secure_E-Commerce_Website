@@ -59,15 +59,17 @@ logging.basicConfig(level=logging.INFO)
 
 SECURE_COOKIES = os.getenv("FLASK_ENV") == "production" 
 # Utility to set cookies
-def set_cookie(response, name, value, max_age=None):
+def set_cookie(response, name, value, max_age=None, httponly=True,domain=None):
     response.set_cookie(
         name,
         value,
-        httponly=True,
+        httponly=httponly,
         secure=SECURE_COOKIES,
         samesite="None",  # Use "None" to allow cross-origin requests
         max_age=max_age,
+        domain=domain,
     )
+
 
 
 # Register
@@ -115,13 +117,16 @@ def login():
         set_cookie(response, "refresh_token", refresh_token)
 
         # Set CSRF tokens in cookies
-        set_cookie(response, "csrf_access_token", csrf_access_token)
-        set_cookie(response, "csrf_refresh_token", csrf_refresh_token)
+        # Login Route
+        set_cookie(response, "csrf_access_token", csrf_access_token, httponly=False)
+        set_cookie(response, "csrf_refresh_token", csrf_refresh_token, httponly=False)
+
 
         logging.info(f"User '{user.username}' logged in")
         return response, 200
     logging.warning(f"Invalid login attempt for user '{data['username']}'")
     return jsonify({"error": "Invalid credentials"}), 401
+
 
 
 # Validate Token
@@ -159,10 +164,11 @@ def refresh():
 
     response = make_response(jsonify({"message": "Token refreshed"}))
     set_cookie(response, "access_token", new_access_token)
-    set_cookie(response, "csrf_access_token", csrf_access_token)
+    set_cookie(response, "csrf_access_token", csrf_access_token, httponly=False)
 
     logging.info("Access token refreshed")
     return response, 200
+
 
 
 # Logout
@@ -660,4 +666,4 @@ def handle_exceptions(e):
     return jsonify({"error": "An internal server error occurred"}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='localhost')
