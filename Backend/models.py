@@ -82,7 +82,7 @@ class Product(db.Model):
     image_url = db.Column(db.String(255))
     discounted_price = db.Column(db.Float, nullable=True)
     promotion_id = db.Column(db.Integer, db.ForeignKey('promotion.id'), nullable=False)
-    promotions = db.relationship('Promotion', backref='product', lazy='joined')
+    promotions = db.relationship('Promotion', backref='product', foreign_keys='Promotion.product_id')
 
 
     @validates('name', 'description', 'price', 'stock_level', 'discounted_price')
