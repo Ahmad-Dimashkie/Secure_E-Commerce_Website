@@ -1,6 +1,0 @@
-venv/
-<<<<<<<< HEAD:inventory_and_product_management/.gitignore
-.env
-========
-.env
->>>>>>>> 904cff62448c2acd207a270739c2b84cfed5f938:order_management_system/.gitignore
