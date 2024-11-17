@@ -109,16 +109,33 @@ def process_csv(file_path):
         print(f"Error processing CSV file: {e}")
 
 
+from sqlalchemy.exc import SQLAlchemyError
+
 def create_promotion(product_id, discount_percentage, start_date, end_date):
-    promotion = Promotion(
-        product_id=product_id,
-        discount_percentage=discount_percentage,
-        start_date=start_date,
-        end_date=end_date
-    )
-    db.session.add(promotion)
-    db.session.commit()
-    return promotion
+    try:
+        # Create a new promotion
+        promotion = Promotion(
+            product_id=product_id,
+            discount_percentage=discount_percentage,
+            start_date=start_date,
+            end_date=end_date
+        )
+        db.session.add(promotion)
+        db.session.flush()  # Ensures the promotion is assigned an ID before committing
+
+        # Update the product's promotion_id field with the newly created promotion's ID
+        product = db.session.query(Product).filter(Product.id == product_id).first()
+        if product:
+            product.promotion_id = promotion.id  # Link the promotion ID to the product
+            product.discounted_price = ((100-discount_percentage)/100)*product.price
+            db.session.commit()
+
+        return promotion
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print(f"Error creating promotion: {e}")
+        raise ValueError("Failed to create promotion and link it to product")  
+
 
 def create_coupon(code, discount_percentage, user_tier, max_uses, expires_at):
     coupon = Coupon(
@@ -134,8 +151,8 @@ def create_coupon(code, discount_percentage, user_tier, max_uses, expires_at):
 
 
 def get_product_with_promotion(product_id):
-    # Fetch the product with its promotions
-    product = db.session.query(Product).options(joinedload('promotions')).filter(Product.id == product_id).first()
+    # Fetch the product with its promotions using the correct class-bound attribute
+    product = db.session.query(Product).options(joinedload(Product.promotions)).filter(Product.id == product_id).first()
     
     if not product:
         return None

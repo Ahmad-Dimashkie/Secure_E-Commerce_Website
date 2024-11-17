@@ -8,7 +8,7 @@ from flask_jwt_extended import (
     get_jwt_identity,
     decode_token,
 )
-from models import db, User, Inventory, Category, Order
+from models import Product, db, User, Inventory, Category, Order
 from crud_role_and_user import create_user, create_role
 from crud_inventory import get_inventory, create_inventory, update_inventory, delete_inventory_by_id, get_low_stock_inventory
 from crud_product import create_product, get_all_products, update_product, delete_product, process_csv, get_product_with_promotion, create_promotion, create_coupon
@@ -38,6 +38,15 @@ app.config["JWT_REFRESH_COOKIE_NAME"] = "refresh_token"
 app.config["JWT_COOKIE_CSRF_PROTECT"] = True  # Enable CSRF protection
 app.config["JWT_ACCESS_CSRF_COOKIE_NAME"] = "csrf_access_token"
 app.config["JWT_REFRESH_CSRF_COOKIE_NAME"] = "csrf_refresh_token"
+
+import os
+
+# Set the folder where uploaded files will be saved
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')  # Creates an "uploads" folder in the current working directory
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 
 # Initialize extensions
@@ -369,7 +378,8 @@ def update_product_route(product_id):
         description=data.get('description'),
         price=data.get('price'),
         stock_level=data.get('stock_level', 0),
-        image_url=data.get('image_url')
+        image_url=data.get('image_url'),
+        promotion_id=data.get('promotion_id')
     )
     if product:
         return jsonify(product.to_dict()), 200
@@ -412,7 +422,7 @@ def upload_products():
 
     
     # Save the file to the UPLOAD_FOLDER
-    upload_folder = app.config.get('UPLOAD_FOLDER')
+    upload_folder = app.config['UPLOAD_FOLDER']
     os.makedirs(upload_folder, exist_ok=True)
     file_path = os.path.join(upload_folder, filename)
     file.save(file_path)
@@ -467,15 +477,61 @@ def get_product_route(product_id):
     else:
         return jsonify({"error": "Product not found"}), 404
 
+
+@app.route('/products-with-promotions', methods=['GET'])
+def get_products_with_promotions():
+    try:
+        # Get the current time (to calculate active promotions)
+        current_time = datetime.utcnow()
+
+        # Query the Product table where promotion_id is not null
+        products_with_promotions = db.session.query(Product).filter(
+            Product.promotion_id.isnot(None)
+        ).all()
+
+        # Prepare the response
+        result = []
+        for product in products_with_promotions:
+            # Check if the promotion is active (assuming promotion details are stored in the Product table or precomputed)
+            active_promotion = None
+            if product.discounted_price:
+                active_promotion = {
+                    "discount_percentage": round(100 - (product.discounted_price / product.price) * 100, 2),
+                    "discounted_price": product.discounted_price
+                }
+            product_data = {
+                "id": product.id,
+                "name": product.name,
+                "price": product.price,
+                "stock_level": product.stock_level,
+                "description": product.description,
+                "image_url": product.image_url,
+                "promotion": active_promotion
+            }
+            result.append(product_data)
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        logging.exception(f"Error fetching products with promotions: {e}")
+        return jsonify({"error": "Failed to fetch products with promotions"}), 500
+
+
+
 ############################################################## Order Management Routes ##############################################
 
-# Get all orders
-app.route('/orders', methods=['GET'])
+
+@app.route('/orders', methods=['GET'])
 @jwt_required()
 @authorize(required_roles=[1, 3])
-def get_orders():
-    orders = Order.query.all()
-    return jsonify([order.to_dict() for order in orders]), 200
+def get_all_orders():
+    try:
+        orders = Order.query.all()
+        orders_list = [order.to_dict() for order in orders]  # Convert orders to dictionaries
+        return jsonify(orders_list), 200
+    except Exception as e:
+        logging.exception("Error fetching orders")
+        return jsonify({"error": "Failed to fetch orders"}), 500
 
 # to be implemented when we have customers
 # # Create an order

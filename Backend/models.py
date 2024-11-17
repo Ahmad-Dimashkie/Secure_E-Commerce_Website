@@ -81,7 +81,9 @@ class Product(db.Model):
     stock_level = db.Column(db.Integer, default=0)
     image_url = db.Column(db.String(255))
     discounted_price = db.Column(db.Float, nullable=True)
-    promotions = relationship('Promotion', backref='product', lazy=True)
+    promotion_id = db.Column(db.Integer, db.ForeignKey('promotion.id'), nullable=False)
+    promotions = db.relationship('Promotion', backref='product', lazy='joined')
+
 
     @validates('name', 'description', 'price', 'stock_level', 'discounted_price')
     def validate_product_fields(self, key, value):
@@ -101,7 +103,8 @@ class Product(db.Model):
             "price": self.price,
             "stock_level": self.stock_level,
             "discounted_price": self.discounted_price,
-            "image_url": self.image_url
+            "image_url": self.image_url,
+            "promotion_id": self.promotion_id,
         }
 
 class Promotion(db.Model):
