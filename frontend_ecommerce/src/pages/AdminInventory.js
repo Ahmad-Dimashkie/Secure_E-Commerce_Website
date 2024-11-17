@@ -9,6 +9,8 @@ import {
   AccordionSummary,
   AccordionDetails,
   Button,
+  TextField,
+  Modal,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AdminSidebar from "../components/AdminSidebar";
@@ -20,6 +22,12 @@ const AdminInventory = () => {
   const [products, setProducts] = useState([]); // State for products
   const [categories, setCategories] = useState([]); // State for categories
   const [reports, setReports] = useState([]); // State for inventory reports
+  const [newInventory, setNewInventory] = useState({
+    category_id: "",
+    capacity: 0,
+    threshold: 50,
+  });
+  const [editInventory, setEditInventory] = useState(null); // For editing inventory
 
   // Fetch Inventory and Categories from Backend
   useEffect(() => {
@@ -55,6 +63,54 @@ const AdminInventory = () => {
     fetchCategories();
   }, []);
 
+  const handleCreateInventory = async () => {
+    try {
+      const response = await api.post("/inventory", newInventory);
+      setProducts([...products, response.data]); // Add new inventory item to the state
+      enqueueSnackbar("Inventory created successfully.", {
+        variant: "success",
+      });
+      setNewInventory({ category_id: "", capacity: 0, threshold: 50 }); // Reset form
+    } catch (error) {
+      enqueueSnackbar("Failed to create inventory.", { variant: "error" });
+    }
+  };
+
+  // Example for Delete Inventory
+  const handleDeleteInventory = async (id) => {
+    try {
+      await api.delete(`/inventory/${id}`);
+      setProducts(products.filter((product) => product.id !== id)); // Remove from state
+      enqueueSnackbar("Inventory deleted successfully.", {
+        variant: "success",
+      });
+    } catch (error) {
+      enqueueSnackbar("Failed to delete inventory.", { variant: "error" });
+    }
+  };
+
+  // Example for Update Inventory
+  const handleUpdateInventory = async () => {
+    if (!editInventory) return;
+
+    try {
+      const response = await api.put(`/inventory/${editInventory.id}`, {
+        capacity: editInventory.capacity,
+      });
+      setProducts(
+        products.map((product) =>
+          product.id === editInventory.id ? response.data : product
+        )
+      ); // Update state with edited item
+      enqueueSnackbar("Inventory updated successfully.", {
+        variant: "success",
+      });
+      setEditInventory(null); // Close modal or form
+    } catch (error) {
+      enqueueSnackbar("Failed to update inventory.", { variant: "error" });
+    }
+  };
+
   // Handle generating inventory reports
   const handleGenerateReport = () => {
     const report = {
@@ -81,13 +137,41 @@ const AdminInventory = () => {
           </Typography>
         </Box>
 
+        {/* Create Inventory Form */}
         <Box sx={{ marginBottom: "20px" }}>
+          <Typography variant="h6">Create Inventory</Typography>
+          <TextField
+            label="Category ID"
+            value={newInventory.category_id}
+            onChange={(e) =>
+              setNewInventory({ ...newInventory, category_id: e.target.value })
+            }
+            sx={{ marginRight: "10px", width: "150px" }}
+          />
+          <TextField
+            label="Capacity"
+            type="number"
+            value={newInventory.capacity}
+            onChange={(e) =>
+              setNewInventory({ ...newInventory, capacity: e.target.value })
+            }
+            sx={{ marginRight: "10px", width: "150px" }}
+          />
+          <TextField
+            label="Threshold"
+            type="number"
+            value={newInventory.threshold}
+            onChange={(e) =>
+              setNewInventory({ ...newInventory, threshold: e.target.value })
+            }
+            sx={{ marginRight: "10px", width: "150px" }}
+          />
           <Button
             variant="contained"
-            color="info"
-            onClick={handleGenerateReport}
+            color="primary"
+            onClick={handleCreateInventory}
           >
-            Generate Inventory Report
+            Create
           </Button>
         </Box>
 
@@ -105,12 +189,6 @@ const AdminInventory = () => {
             </Typography>
             <Typography>Total Products: {report.totalProducts}</Typography>
             <Typography>Low Stock Products: {report.lowStock}</Typography>
-            <Typography>Popular Products:</Typography>
-            {report.popularProducts.map((product) => (
-              <Typography key={product.id}>
-                - {product.name}: ${product.price}
-              </Typography>
-            ))}
           </Box>
         ))}
 
@@ -122,44 +200,86 @@ const AdminInventory = () => {
           <AccordionDetails>
             {categories.map((category) => (
               <Box key={category.id} sx={{ marginBottom: "10px" }}>
-                <Typography variant="h6">{category.name}</Typography>
+                <Typography variant="h6">
+                  ID: {category.id} - Category: {category.name}
+                </Typography>
               </Box>
             ))}
           </AccordionDetails>
         </Accordion>
 
-        {/* Products Section */}
-        <Grid container spacing={3} sx={{ marginTop: "20px" }}>
+        {/* Inventory List */}
+        <Grid container spacing={3}>
           {products.map((product) => (
-            <Grid item xs={12} sm={6} md={6} key={product.id}>
-              <Card
-                sx={{
-                  display: "flex",
-                  height: "250px",
-                  border:
-                    product.capacity < product.threshold
-                      ? "2px solid red"
-                      : "1px solid grey",
-                }}
-              >
-                <CardContent sx={{ flex: "1 0 auto" }}>
-                  <Typography gutterBottom variant="h5" component="div">
+            <Grid item xs={12} sm={6} md={4} key={product.id}>
+              <Card sx={{ padding: "15px" }}>
+                <CardContent>
+                  <Typography variant="h6">
                     Inventory ID: {product.id}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Category ID: {product.category_id}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Capacity: {product.capacity}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Threshold: {product.threshold}
-                  </Typography>
+                  <Typography>Category ID: {product.category_id}</Typography>
+                  <Typography>Capacity: {product.capacity}</Typography>
+                  <Typography>Threshold: {product.threshold}</Typography>
+                  <Button
+                    variant="contained"
+                    color="error"
+                    onClick={() => handleDeleteInventory(product.id)}
+                    sx={{ marginTop: "10px" }}
+                  >
+                    Delete
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="info"
+                    onClick={() => setEditInventory(product)}
+                    sx={{ marginLeft: "10px", marginTop: "10px" }}
+                  >
+                    Edit
+                  </Button>
                 </CardContent>
               </Card>
             </Grid>
           ))}
         </Grid>
+
+        {/* Edit Inventory Modal */}
+        {editInventory && (
+          <Modal
+            open={!!editInventory}
+            onClose={() => setEditInventory(null)}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Box
+              sx={{ padding: "20px", background: "#fff", borderRadius: "8px" }}
+            >
+              <Typography variant="h6">Edit Inventory</Typography>
+              <TextField
+                label="Capacity"
+                type="number"
+                value={editInventory.capacity}
+                onChange={(e) =>
+                  setEditInventory({
+                    ...editInventory,
+                    capacity: e.target.value,
+                  })
+                }
+                sx={{ marginTop: "10px", width: "100%" }}
+              />
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleUpdateInventory}
+                sx={{ marginTop: "20px" }}
+              >
+                Update
+              </Button>
+            </Box>
+          </Modal>
+        )}
       </Box>
     </div>
   );
