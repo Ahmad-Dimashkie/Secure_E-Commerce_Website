@@ -65,7 +65,12 @@ const AdminInventory = () => {
 
   const handleCreateInventory = async () => {
     try {
-      const response = await api.post("/inventory", newInventory);
+      const response = await api.post("/inventory", {
+        ...newInventory,
+        category_id: parseInt(newInventory.category_id),
+        capacity: parseInt(newInventory.capacity),
+        threshold: parseInt(newInventory.threshold),
+      });
       setProducts([...products, response.data]); // Add new inventory item to the state
       enqueueSnackbar("Inventory created successfully.", {
         variant: "success",
@@ -94,20 +99,27 @@ const AdminInventory = () => {
     if (!editInventory) return;
 
     try {
+      // Send the PUT request
       const response = await api.put(`/inventory/${editInventory.id}`, {
-        capacity: editInventory.capacity,
+        capacity: parseInt(editInventory.capacity), // Ensure the capacity is an integer
       });
+
+      // Update products state with the new data
       setProducts(
         products.map((product) =>
           product.id === editInventory.id ? response.data : product
         )
-      ); // Update state with edited item
+      );
+
       enqueueSnackbar("Inventory updated successfully.", {
         variant: "success",
       });
       setEditInventory(null); // Close modal or form
     } catch (error) {
-      enqueueSnackbar("Failed to update inventory.", { variant: "error" });
+      enqueueSnackbar(
+        error.response?.data?.error || "Failed to update inventory.",
+        { variant: "error" }
+      );
     }
   };
 
@@ -256,7 +268,9 @@ const AdminInventory = () => {
             <Box
               sx={{ padding: "20px", background: "#fff", borderRadius: "8px" }}
             >
-              <Typography variant="h6">Edit Inventory</Typography>
+              <Typography variant="h6">
+                Decrease Inventory Capacity By:
+              </Typography>
               <TextField
                 label="Capacity"
                 type="number"
