@@ -23,6 +23,7 @@ from flask_migrate import Migrate
 from flask_cors import CORS
 import os
 from datetime import datetime
+from werkzeug.utils import secure_filename
 
 
 
@@ -65,7 +66,13 @@ def set_cookie(response, name, value, max_age=None):
 def register_user():
     try:
         data = request.get_json()
-        user = create_user(data["username"], data["password"], data["role_id"])
+        username = data.get("username", "").strip()
+        password = data.get("password", "").strip()
+        role_id = data.get("role_id")
+        if not username or not password or not role_id:
+            return jsonify({"error": "Invalid input"}), 400
+        
+        user = create_user(username, password, role_id)
         logging.info(f"User '{user.username}' registered with role ID {user.role_id}")
         return jsonify(user.to_dict()), 201
     except Exception as e:
@@ -76,12 +83,18 @@ def register_user():
 @app.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
-    user = User.query.filter_by(username=data["username"]).first()
-    if user and check_password_hash(user.password_hash, data["password"]):
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+    if not username or not password:
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    user = User.query.filter(User.username == username).first()  # Parameterized filter
+
+    if user and check_password_hash(user.password_hash, password):
         access_token = create_access_token(identity=user.id, additional_claims={
-        "role_id": user.role_id,
-        "username": user.username,  # Optional: Include more claims as needed
-    })
+            "role_id": user.role_id,
+            "username": user.username,
+        })
         refresh_token = create_refresh_token(identity=user.id)
 
         # Decode tokens to extract CSRF tokens
@@ -210,15 +223,23 @@ def create_inventory_route():
 @authorize(required_roles=[1, 4])
 def update_inventory_by_id(inv_id):
     data = request.get_json()
+    try:
+        capacity = data.get("capacity")
+        if capacity is None or not isinstance(capacity, int) or capacity < 0:
+            return jsonify({"error": "Invalid capacity value"}), 400
+        
+        inv= Inventory.query.get(inv_id)
+        if not inv:
+            return jsonify({"error": "Inventory not found"}), 404
     
-    inv= Inventory.query.get(inv_id)
-    if not inv:
-        return jsonify({"error": "Inventory not found"}), 404
+        update_inventory(inv_id, capacity)
     
-    update_inventory(inv_id, data.get('capacity', 0))
-    
-    db.session.commit()
-    return jsonify(inv.to_dict()), 200
+        db.session.commit()
+        return jsonify(inv.to_dict()), 200
+    except Exception as e:
+        logging.error(f"Error updating inventory: {e}")
+        return jsonify({"error": "Error updating inventory"}), 500
+
 
 
 #delete inventory
@@ -226,11 +247,16 @@ def update_inventory_by_id(inv_id):
 @jwt_required()
 @authorize(required_roles=[1, 4]) 
 def delete_inventory(inv_id):
-    success = delete_inventory_by_id(inv_id)
-    if success:
-        return jsonify({"message": "Inventory deleted"}), 200
-    else:
-        return jsonify({"error": "Inventory not found"}), 404
+    try:
+        inv = Inventory.query.get(inv_id)
+        if not inv:
+            return jsonify({"error": "Inventory not found"}), 404
+        success = delete_inventory_by_id(inv_id)
+        if success:
+            return jsonify({"message": "Inventory deleted"}), 200
+    except Exception as e:
+        logging.error(f"Error deleting inventory: {e}")
+        return jsonify({"error": "Error deleting inventory"}), 500
 
 
 # New route to get low stock items
@@ -376,20 +402,31 @@ def upload_products():
     file = request.files['file']
     
     # Check if the file has a valid filename
-    if file.filename == '':
+    if not file.filename:
         return jsonify({"error": "No selected file"}), 400
     
-    if file and file.filename.endswith('.csv'):
-        # Save the file to the UPLOAD_FOLDER
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        file.save(file_path)
-        
+    filename = secure_filename(file.filename)
+    
+    if not filename.endswith('.csv'):
+            return jsonify({"error": "Invalid file type, only CSV files are allowed"}), 400
+
+    
+    # Save the file to the UPLOAD_FOLDER
+    upload_folder = app.config.get('UPLOAD_FOLDER')
+    os.makedirs(upload_folder, exist_ok=True)
+    file_path = os.path.join(upload_folder, filename)
+    file.save(file_path)
+    max_file_size = 5 * 1024 * 1024  # 5 MB
+    if os.path.getsize(file_path) > max_file_size:
+        os.remove(file_path)  # Clean up the oversized file
+        return jsonify({"error": "File size exceeds the allowed limit (5MB)"}), 400
+    try:
         # Process the CSV file and add products
         process_csv(file_path)
-        
         return jsonify({"message": "File uploaded and processed successfully"}), 200
-    else:
-        return jsonify({"error": "Invalid file type, please upload a CSV file"}), 400
+    except Exception as e:
+            os.remove(file_path)  # Clean up
+            return jsonify({"error": f"Invalid CSV content: {str(e)}"}), 400
     
 
 # Promotions and Coupons

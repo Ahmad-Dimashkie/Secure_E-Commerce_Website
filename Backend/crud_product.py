@@ -5,6 +5,8 @@ from datetime import datetime
 from models import db, Product, Promotion, Coupon
 from utils import is_valid_url
 import pandas as pd
+import os
+from flask import jsonify
 
 
 def create_product(name, category_id, inventory_id, description, price, stock_level=0, image_url=None, subcategory_id=None, specifications=None):
@@ -74,12 +76,24 @@ def delete_product(product_id):
 def process_csv(file_path):
     try:
         data = pd.read_csv(file_path, encoding='ISO-8859-1')
+        required_columns = {'name', 'category_id', 'inventory_id', 'description', 'price', 'stock_level'}
+        if not required_columns.issubset(data.columns):
+            os.remove(file_path)  # Clean up
+            return jsonify({"error": "CSV file is missing required columns"}), 400
         for _, row in data.iterrows():
+            if not isinstance(row['name'], str) or len(row['name']) > 255:
+                raise ValueError("Invalid product name")
+            if not isinstance(row['description'], str) or len(row['description']) > 255:
+                raise ValueError("Invalid product description")
+            if not isinstance(row['price'], (int, float)) or row['price'] < 0:
+                raise ValueError("Invalid price")
+            if not isinstance(row['stock_level'], int) or row['stock_level'] < 0:
+                raise ValueError("Invalid stock level")
             # Validate and sanitize inputs, including URL validation for image_url
             image_url = row.get('image_url', '')
             if not is_valid_url(image_url):
-                image_url = ''  # Optionally set to a default image URL if invalid
-            
+                image_url = ''  # Optionally set to a default image URL if invalid  
+                 
             new_product = Product(
                 name=row['name'],
                 category_id=int(row['category_id']),
