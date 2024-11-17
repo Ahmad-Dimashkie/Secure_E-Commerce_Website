@@ -12,7 +12,7 @@ from models import Product, db, User, Inventory, Category, Order
 from crud_role_and_user import create_user, create_role
 from crud_inventory import get_inventory, create_inventory, update_inventory, delete_inventory_by_id, get_low_stock_inventory
 from crud_product import create_product, get_all_products, update_product, delete_product, process_csv, get_product_with_promotion, create_promotion, create_coupon
-from crud_order import  update_order_status, generate_invoice, create_return_request, process_return_request
+from crud_order import  get_all_return_requests, update_order_status, generate_invoice, create_return_request, process_return_request
 from utils import send_low_stock_alert, validate_input
 from auth import authorize
 from config import Config
@@ -636,6 +636,19 @@ def update_return_request_status(return_id):
     # Directly return the dictionary since it's already JSON-compatible
     return jsonify(updated_request), 200
 
+
+# Add a new route to fetch all return requests
+@app.route('/returns', methods=['GET'])
+@jwt_required()
+
+def get_return_requests_route():
+    try:
+        return_requests = get_all_return_requests()
+        if 'error' in return_requests:
+            return jsonify(return_requests), 500
+        return jsonify(return_requests), 200
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
 ##################################################################################################################################################
 

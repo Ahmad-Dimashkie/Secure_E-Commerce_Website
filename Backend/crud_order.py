@@ -80,3 +80,12 @@ def refund_order(order_id):
         print(f"Refund processed for order {order_id}")
         return True
     return False
+
+
+# New function to get all return requests
+def get_all_return_requests():
+    try:
+        return_requests = ReturnRequest.query.all()
+        return [return_request.to_dict() for return_request in return_requests]
+    except Exception as e:
+        return {"error": "Failed to fetch return requests", "details": str(e)}
