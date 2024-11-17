@@ -7,7 +7,7 @@ from utils import is_valid_url
 import pandas as pd
 
 
-def create_product(name, subcategory_id, description, specifications, price, stock_level=0, image_url=None):
+def create_product(name, category_id, inventory_id, description, price, stock_level=0, image_url=None, subcategory_id=None, specifications=None):
     try:
         # Validate and sanitize image_url for SSRF protection
         if image_url and not is_valid_url(image_url):
@@ -15,9 +15,9 @@ def create_product(name, subcategory_id, description, specifications, price, sto
 
         new_product = Product(
             name=name,
-            subcategory_id=int(subcategory_id),
+            category_id=int(category_id),
+            inventory_id=int(inventory_id),
             description=description[:1000],
-            specifications=specifications[:1000],
             price=max(0, float(price)),
             stock_level=max(0, int(stock_level)),
             image_url=image_url
@@ -82,12 +82,11 @@ def process_csv(file_path):
             
             new_product = Product(
                 name=row['name'],
-                subcategory_id=int(row['subcategory_id']),
+                category_id=int(row['category_id']),
+                inventory_id=int(row['inventory_id']),
                 stock_level=max(0, int(row['stock_level'])),
                 price=max(0, float(row['price'])),
                 description=row.get('description', '')[:1000],
-                specifications=row.get('specifications', '')[:1000],
-                image_url=image_url
             )
             db.session.add(new_product)
         db.session.commit()

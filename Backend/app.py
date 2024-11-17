@@ -8,11 +8,11 @@ from flask_jwt_extended import (
     get_jwt_identity,
     decode_token,
 )
-from models import db, User, Inventory, Alert, Category, Order
+from models import db, User, Inventory, Category, Order
 from crud_role_and_user import create_user, create_role
-from crud_inventory import get_inventory, create_inventory_item, delete_inventory_item, get_low_stock_items, calculate_inventory_turnover, get_most_popular_products, predict_future_demand
+from crud_inventory import get_inventory, create_inventory, update_inventory, delete_inventory_by_id, get_low_stock_inventory
 from crud_product import create_product, get_all_products, update_product, delete_product, process_csv, get_product_with_promotion, create_promotion, create_coupon
-from crud_order import create_order, update_order_status, generate_invoice, create_return_request, process_return_request
+from crud_order import  update_order_status, generate_invoice, create_return_request, process_return_request
 from utils import send_low_stock_alert, validate_input
 from auth import authorize
 from config import Config
@@ -201,43 +201,36 @@ def get_inventory_route():
 @authorize(required_roles=[1, 4])
 def create_inventory_route():
     data = request.get_json()
-    new_item = create_inventory_item(data['product_id'], data['warehouse_id'], data['stock_level'], data.get('threshold', 10))
+    new_item = create_inventory(data['category_id'], data['capacity'], data.get('threshold', 50))
     return jsonify(new_item.to_dict()), 201
 
 #update inventory
-@app.route('/inventory/<int:item_id>', methods=['PUT'])
+@app.route('/inventory/<int:inv_id>', methods=['PUT'])
 @jwt_required()
 @authorize(required_roles=[1, 4])
-def update_inventory_route(item_id):
+def update_inventory_by_id(inv_id):
     data = request.get_json()
     
-    item = Inventory.query.get(item_id)
-    if not item:
-        return jsonify({"error": "Inventory item not found"}), 404
+    inv= Inventory.query.get(inv_id)
+    if not inv:
+        return jsonify({"error": "Inventory not found"}), 404
     
-    # Update the stock level based on the provided stock_change
-    stock_change = data.get("stock_change", 0)
-    item.stock_level += stock_change
-    item.last_updated = datetime.utcnow()
-    
-    # Check if an alert should be sent
-    if item.stock_level < item.threshold:
-        send_low_stock_alert(item.product_id, item.warehouse_id)
+    update_inventory(inv_id, data.get('capacity', 0))
     
     db.session.commit()
-    return jsonify(item.to_dict()), 200
+    return jsonify(inv.to_dict()), 200
 
 
 #delete inventory
-@app.route('/inventory/<int:item_id>/<int:warehouse_id>', methods=['DELETE'])
+@app.route('/inventory/<int:inv_id>', methods=['DELETE'])
 @jwt_required()
 @authorize(required_roles=[1, 4]) 
-def delete_inventory_route(item_id, warehouse_id):
-    success = delete_inventory_item(item_id, warehouse_id)
+def delete_inventory(inv_id):
+    success = delete_inventory_by_id(inv_id)
     if success:
-        return jsonify({"message": "Item deleted"}), 200
+        return jsonify({"message": "Inventory deleted"}), 200
     else:
-        return jsonify({"error": "Inventory item not found"}), 404
+        return jsonify({"error": "Inventory not found"}), 404
 
 
 # New route to get low stock items
@@ -245,44 +238,44 @@ def delete_inventory_route(item_id, warehouse_id):
 @jwt_required()
 @authorize(required_roles=[1, 4]) 
 def low_stock_items_route():
-    low_stock_items = [item.to_dict() for item in get_low_stock_items()]
-    return jsonify(low_stock_items), 200
+    low_stock_invs = [inv.to_dict() for inv in get_low_stock_inventory()]
+    return jsonify(low_stock_invs), 200
 
-# Optional: Route to retrieve alerts if logging in database
-@app.route('/alerts', methods=['GET'])
-@jwt_required()
-@authorize(required_roles=[1, 4]) 
-def get_alerts_route():
-    alerts = Alert.query.order_by(Alert.alert_time.desc()).all()
-    return jsonify([alert.to_dict() for alert in alerts]), 200
+# # Optional: Route to retrieve alerts if logging in database
+# @app.route('/alerts', methods=['GET'])
+# @jwt_required()
+# @authorize(required_roles=[1, 4]) 
+# def get_alerts_route():
+#     alerts = Alert.query.order_by(Alert.alert_time.desc()).all()
+#     return jsonify([alert.to_dict() for alert in alerts]), 200
 
 
-# Reports
-@app.route('/report/inventory-turnover', methods=['GET'])
-@jwt_required()
-@authorize(required_roles=[1, 4]) 
-def inventory_turnover_report():
-    report = calculate_inventory_turnover()
-    return jsonify(report), 200
+# # Reports
+# @app.route('/report/inventory-turnover', methods=['GET'])
+# @jwt_required()
+# @authorize(required_roles=[1, 4]) 
+# def inventory_turnover_report():
+#     report = calculate_inventory_turnover()
+#     return jsonify(report), 200
 
-# Reports
-@app.route('/report/most-popular-products', methods=['GET'])
-@jwt_required()
-@authorize(required_roles=[1, 4]) 
-def most_popular_products_report():
-    top_n = request.args.get('top_n', default=5, type=int)
-    report = get_most_popular_products(top_n=top_n)
-    return jsonify(report), 200
+# # Reports
+# @app.route('/report/most-popular-products', methods=['GET'])
+# @jwt_required()
+# @authorize(required_roles=[1, 4]) 
+# def most_popular_products_report():
+#     top_n = request.args.get('top_n', default=5, type=int)
+#     report = get_most_popular_products(top_n=top_n)
+#     return jsonify(report), 200
 
-# Reports
-@app.route('/report/predict-demand', methods=['GET'])
-@jwt_required()
-@authorize(required_roles=[1, 4]) 
-def predict_demand_report():
-    product_id = request.args.get('product_id', type=int)
-    days = request.args.get('days', default=30, type=int)
-    report = predict_future_demand(product_id, days=days)
-    return jsonify(report), 200
+# # Reports
+# @app.route('/report/predict-demand', methods=['GET'])
+# @jwt_required()
+# @authorize(required_roles=[1, 4]) 
+# def predict_demand_report():
+#     product_id = request.args.get('product_id', type=int)
+#     days = request.args.get('days', default=30, type=int)
+#     report = predict_future_demand(product_id, days=days)
+#     return jsonify(report), 200
 
 ################################################################################### Product Management Routes #########################################################
 
@@ -290,7 +283,7 @@ def predict_demand_report():
 # get Categories
 @app.route('/categories', methods=['GET'])
 @jwt_required()
-@authorize(required_roles=[1, 2])
+@authorize(required_roles=[1, 2, 4])
 def get_categories():
     categories = Category.query.all()
     category_data = [category.to_dict() for category in categories]
@@ -305,9 +298,9 @@ def create_product_route():
     data = request.get_json()
     product = create_product(
         name=data.get('name'),
-        subcategory_id=data.get('subcategory_id'),
+        category_id=data.get('category_id'),
+        inventory_id=data.get('inventory_id'),
         description=data.get('description'),
-        specifications=data.get('specifications'),
         price=data.get('price'),
         stock_level=data.get('stock_level', 0),
         image_url=data.get('image_url')
@@ -334,8 +327,10 @@ def get_all_products_route():
 def update_product_route(product_id):
     data = request.get_json()
     # Check if all required fields are present
-    if "subcategory_id" not in data or data["subcategory_id"] is None:
-        return jsonify({"error": "subcategory_id is required"}), 400
+    if "category_id" not in data or data["category_id"] is None:
+        return jsonify({"error": "category_id is required"}), 400
+    if "inventory_id" not in data or data["inventory_id"] is None:
+        return jsonify({"error": "inventory_id is required"}), 400
     if "price" not in data or data["price"] is None:
         return jsonify({"error": "price is required"}), 400
 
@@ -343,9 +338,9 @@ def update_product_route(product_id):
     product = update_product(
         product_id,
         name=data.get('name'),
-        subcategory_id=data.get('subcategory_id'),
+        category_id=data.get('category_id'),
+        inventory_id=data.get('inventory_id'),
         description=data.get('description'),
-        specifications=data.get('specifications'),
         price=data.get('price'),
         stock_level=data.get('stock_level', 0),
         image_url=data.get('image_url')
@@ -445,22 +440,23 @@ def get_orders():
     orders = Order.query.all()
     return jsonify([order.to_dict() for order in orders]), 200
 
-# Create an order
-@app.route('/create_order', methods=['POST'])
-def create_order_route():
-    data = request.get_json()
-    if not validate_input(data, ['customer_id', 'customer_email', 'items']):
-        return jsonify({"error": "Invalid data provided"}), 400
+# to be implemented when we have customers
+# # Create an order
+# @app.route('/create_order', methods=['POST'])
+# def create_order_route():
+#     data = request.get_json()
+#     if not validate_input(data, ['customer_id', 'customer_email', 'items']):
+#         return jsonify({"error": "Invalid data provided"}), 400
 
-    # Creating order with basic validation on items
-    order = create_order(data['customer_id'], data['items'], data['customer_email'])
+#     # Creating order with basic validation on items
+#     order = create_order(data['customer_id'], data['items'], data['customer_email'])
     
-    # Check if create_order returned an error dictionary
-    if isinstance(order, dict) and 'error' in order:
-        return jsonify(order), 400
+#     # Check if create_order returned an error dictionary
+#     if isinstance(order, dict) and 'error' in order:
+#         return jsonify(order), 400
 
-    # Otherwise, assume order is an Order object and serialize it to JSON
-    return jsonify(order.to_dict()), 201
+#     # Otherwise, assume order is an Order object and serialize it to JSON
+#     return jsonify(order.to_dict()), 201
 
 
 # Update order status

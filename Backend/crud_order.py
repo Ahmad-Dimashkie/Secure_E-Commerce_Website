@@ -1,33 +1,11 @@
-from models import db, Order, OrderItem, ReturnRequest, Invoice
+from models import db, Order, OrderDetail, ReturnRequest, Invoice
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 
 def send_notification(email, subject, message):
     # Simulating email notification (replace with actual email logic)
     print(f"Sending email to {email} - Subject: {subject} - Message: {message}")
-
-def create_order(customer_id, items, customer_email):
-    try:
-        order = Order(customer_id=customer_id, total_amount=0, customer_email=customer_email)
-        db.session.add(order)
-        db.session.flush()
-
-        for item in items:
-            quantity = int(item.get('quantity', 1))
-            price_per_unit = float(item.get('price_per_unit'))
-            order_item = OrderItem(order_id=order.id, product_id=item['product_id'],
-                                   quantity=quantity, price_per_unit=price_per_unit)
-            db.session.add(order_item)
-            order.total_amount += quantity * price_per_unit
-
-        db.session.commit()
-        send_notification(customer_email, "Order Created", f"Your order #{order.id} has been created.")
-        return order
-    except (IntegrityError, ValueError) as e:
-        db.session.rollback()
-        return {"error": "Failed to create order", "details": str(e)}
     
-
 def update_order_status(order_id, new_status):
     order = Order.query.get(order_id)
     if not order:
