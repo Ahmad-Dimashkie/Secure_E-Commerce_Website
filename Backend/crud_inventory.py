@@ -13,7 +13,7 @@ def create_inventory(category_id, capacity, threshold=50):
 
 
 def get_inventory_by_id(inv_id):
-    return Inventory.query.filter_by(inv_id=inv_id).first()
+    return Inventory.query.filter_by(id=inv_id).first()
 
 def update_inventory(inv_id, capacity_change):
     inv = get_inventory_by_id(inv_id)
