@@ -1,3 +1,4 @@
+from sqlite3 import IntegrityError
 from flask import Flask, request, jsonify, make_response
 from flask_jwt_extended import (
     JWTManager,
@@ -333,50 +334,55 @@ def get_categories():
 
 from flask import request
 
+# Create a Product
 @app.route('/products', methods=['POST'])
 @jwt_required()
 @authorize(required_roles=[1, 2])
 def create_product_route():
-    # Parse form data
-    name = request.form.get('name')
-    description = request.form.get('description')
-    price = request.form.get('price')
-    image = request.files.get('image')
-
-    if not name or not description or not price:
-        return jsonify({"error": "Name, description, and price are required"}), 400
-
-    # Convert price to a float
     try:
-        price = float(price)
-    except ValueError:
-        return jsonify({"error": "Price must be a valid number"}), 400
+        # Parse incoming JSON data
+        data = request.get_json()
 
-    # Handle the image file (if provided)
-    image_url = None
-    if image:
-        # Here you can add your logic to save the image to a directory or cloud storage
-        # For example:
-        # image.save(os.path.join(UPLOAD_FOLDER, image.filename))
-        image_url = f"/uploads/{image.filename}"  # Assuming the image will be saved to this path
+        # Validate required fields
+        required_fields = ["name", "category_id", "inventory_id", "description", "price", "stock_level"]
+        missing_fields = [field for field in required_fields if field not in data or data[field] is None]
 
-    # Create the product object and add to database
-    product = create_product(
-        name=name,
-        category_id=None,  # Since category is not provided here
-        inventory_id=None,  # Since inventory is not provided here
-        description=description,
-        price=price,
-        stock_level=0,  # Default value since not provided
-        image_url=image_url
-    )
+        if missing_fields:
+            return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
 
-    if product:
+        # Extract fields with default/fallback values if needed
+        name = data["name"]
+        description = data["description"]
+        price = float(data["price"])
+        category_id = int(data["category_id"])
+        inventory_id = int(data["inventory_id"])
+        stock_level = int(data["stock_level"])
+        image_url = data.get("image_url", None)  # Image URL is optional
+
+        # Create the Product instance
+        product = Product(
+            name=name,
+            description=description,
+            price=price,
+            category_id=category_id,
+            inventory_id=inventory_id,
+            stock_level=stock_level,
+            image_url=image_url
+        )
+
+        # Add and commit the product to the database
+        db.session.add(product)
+        db.session.commit()
+
         return jsonify(product.to_dict()), 201
-    else:
-        return jsonify({"error": "Failed to create product"}), 400
 
-
+    except IntegrityError as e:
+        db.session.rollback()
+        return jsonify({"error": f"Database Integrity Error: {str(e)}"}), 500
+    except TypeError as e:
+        return jsonify({"error": f"Type Error: {str(e)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 # Get all Products
 @app.route('/products', methods=['GET'])
