@@ -50,7 +50,7 @@ const AdminProducts = () => {
   // Handle dialog open for adding or editing a product
   const handleOpen = (product = null) => {
     setSelectedProduct(
-      product ? { ...product } : { name: '', description: '', price: '', image: null }
+      product ? { ...product } : { name: '', description: '', price: '', category_id: '', inventory_id: '', stock_level: '', image_url: '' }
     );
     setOpen(true);
   };
@@ -59,40 +59,53 @@ const AdminProducts = () => {
     setOpen(false);
     setSelectedProduct(null);
   };
+// Handle saving product (either add or update)
+const handleSaveProduct = async () => {
+  try {
+    const productData = {
+      name: selectedProduct.name,
+      description: selectedProduct.description,
+      price: parseFloat(selectedProduct.price),
+      category_id: parseInt(selectedProduct.category_id),
+      inventory_id: parseInt(selectedProduct.inventory_id),
+      stock_level: parseInt(selectedProduct.stock_level),
+      image_url: selectedProduct.image_url || null,
+    };
 
-  // Handle saving product (either add or update)
-  const handleSaveProduct = async () => {
-    try {
-      if (selectedProduct.id) {
-        // Update existing product
-        const response = await api.put(`/products/${selectedProduct.id}`, selectedProduct);
-        setProducts((prevProducts) =>
-          prevProducts.map((product) => (product.id === selectedProduct.id ? response.data : product))
-        );
-        enqueueSnackbar('Product updated successfully', { variant: 'success' });
-      } else {
-        // Add new product
-        const formData = new FormData();
-        formData.append('name', selectedProduct.name);
-        formData.append('description', selectedProduct.description);
-        formData.append('price', selectedProduct.price);
-        if (selectedProduct.image) {
-          formData.append('image', selectedProduct.image);
-        }
-        const response = await api.post('/products', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-        setProducts([...products, response.data]);
-        enqueueSnackbar('Product added successfully', { variant: 'success' });
-      }
-      handleClose();
-    } catch (error) {
-      enqueueSnackbar('Failed to save product', { variant: 'error' });
-      console.error('Error saving product:', error.response || error);
+    if (selectedProduct.id) {
+      // Update existing product
+      const response = await api.put(`/products/${selectedProduct.id}`, productData);
+      setProducts((prevProducts) =>
+        prevProducts.map((product) => (product.id === selectedProduct.id ? response.data : product))
+      );
+      enqueueSnackbar('Product updated successfully', { variant: 'success' });
+    } else {
+      // Add new product
+      const response = await api.post('/products', productData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      setProducts([...products, response.data]);
+      enqueueSnackbar('Product added successfully', { variant: 'success' });
     }
-  };
+    handleClose();
+  } catch (error) {
+    enqueueSnackbar('Failed to save product', { variant: 'error' });
+
+    // Print the error to the console for debugging
+    console.error('Error saving product:', error);
+    if (error.response) {
+      console.error('Error response data:', error.response.data);
+      console.error('Error response status:', error.response.status);
+      console.error('Error response headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('Error request:', error.request);
+    } else {
+      console.error('General error:', error.message);
+    }
+  }
+};
 
   // Handle deleting a product
   const handleDeleteProduct = async (productId) => {
@@ -273,7 +286,6 @@ const AdminProducts = () => {
           ))}
         </Grid>
 
-        {/* Dialog for Adding/Editing Products */}
         <Dialog open={open} onClose={handleClose}>
           <DialogTitle>{selectedProduct?.id ? 'Edit Product' : 'Add New Product'}</DialogTitle>
           <DialogContent>
@@ -305,21 +317,45 @@ const AdminProducts = () => {
                 setSelectedProduct({ ...selectedProduct, price: e.target.value })
               }
             />
-            <Button variant="contained" component="label" sx={{ marginTop: '10px' }}>
-              Upload Image
-              <input
-                type="file"
-                hidden
-                onChange={(e) =>
-                  setSelectedProduct({ ...selectedProduct, image: e.target.files[0] || null })
-                }
-              />
-            </Button>
-            {selectedProduct?.image && (
-              <Typography variant="body2" sx={{ marginTop: '10px' }}>
-                Selected File: {selectedProduct.image.name}
-              </Typography>
-            )}
+            <TextField
+              margin="dense"
+              label="Category ID"
+              type="number"
+              fullWidth
+              value={selectedProduct?.category_id || ''}
+              onChange={(e) =>
+                setSelectedProduct({ ...selectedProduct, category_id: e.target.value })
+              }
+            />
+            <TextField
+              margin="dense"
+              label="Inventory ID"
+              type="number"
+              fullWidth
+              value={selectedProduct?.inventory_id || ''}
+              onChange={(e) =>
+                setSelectedProduct({ ...selectedProduct, inventory_id: e.target.value })
+              }
+            />
+            <TextField
+              margin="dense"
+              label="Stock Level"
+              type="number"
+              fullWidth
+              value={selectedProduct?.stock_level || ''}
+              onChange={(e) =>
+                setSelectedProduct({ ...selectedProduct, stock_level: e.target.value })
+              }
+            />
+            <TextField
+              margin="dense"
+              label="Image URL"
+              fullWidth
+              value={selectedProduct?.image_url || ''}
+              onChange={(e) =>
+                setSelectedProduct({ ...selectedProduct, image_url: e.target.value })
+              }
+            />
           </DialogContent>
           <DialogActions>
             <Button onClick={handleClose} color="secondary">
@@ -330,6 +366,7 @@ const AdminProducts = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
 
         {/* Dialog for Managing Promotions */}
         <Dialog open={promotionOpen} onClose={handlePromotionClose}>
