@@ -1,23 +1,31 @@
 import axios from "axios";
 
+const getCsrfTokenFromCookie = () => {
+  const match = document.cookie.match(
+    new RegExp("(^| )csrf_access_token=([^;]+)")
+  );
+  if (match) return match[2];
+  return null;
+};
+
 const api = axios.create({
-  withCredentials: true, // Allow cookies to be sent with requests
-  baseURL: process.env.REACT_APP_API_URL, // Ensure this is set in your .env file
+  baseURL: "http://localhost:5000",
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Add a request interceptor to attach the CSRF token
-api.interceptors.request.use((config) => {
-  const csrfToken = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith("csrf_access_token="))
-    ?.split("=")[1];
-  if (csrfToken) {
-    config.headers["X-CSRF-TOKEN"] = csrfToken;
+api.interceptors.request.use(
+  (config) => {
+    const csrfToken = getCsrfTokenFromCookie();
+    if (csrfToken) {
+      config.headers["X-CSRF-Token"] = csrfToken;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
-
+);
 export default api;
