@@ -11,8 +11,8 @@ from flask_jwt_extended import (
 )
 from models import Product, db, User, Inventory, Category, Order
 from crud_role_and_user import create_user, create_role
-from crud_inventory import get_inventory, create_inventory, update_inventory, delete_inventory_by_id, get_low_stock_inventory
-from crud_product import create_product, get_all_products, update_product, delete_product, process_csv, get_product_with_promotion, create_promotion, create_coupon
+from crud_inventory import get_inventory, create_inventory, update_inventory, delete_inventory_by_id, get_low_stock_inventory, calculate_inventory_turnover
+from crud_product import create_product, get_all_products, update_product, delete_product, process_csv, get_product_with_promotion, create_promotion, create_coupon, get_most_popular_products, predict_future_demand
 from crud_order import  get_all_return_requests, update_order_status, generate_invoice, create_return_request, process_return_request
 from utils import send_low_stock_alert, validate_input
 from auth import authorize
@@ -293,31 +293,44 @@ def low_stock_items_route():
 
 
 # # Reports
-# @app.route('/report/inventory-turnover', methods=['GET'])
-# @jwt_required()
-# @authorize(required_roles=[1, 4]) 
-# def inventory_turnover_report():
-#     report = calculate_inventory_turnover()
-#     return jsonify(report), 200
+@app.route('/report/inventory-turnover', methods=['GET'])
+@jwt_required()
+@authorize(required_roles=[1, 4])
+def inventory_turnover_report():
+    days = request.args.get('days', default=30, type=int)
+    report = calculate_inventory_turnover(days=days)
+    return jsonify(report), 200
 
 # # Reports
-# @app.route('/report/most-popular-products', methods=['GET'])
-# @jwt_required()
-# @authorize(required_roles=[1, 4]) 
-# def most_popular_products_report():
-#     top_n = request.args.get('top_n', default=5, type=int)
-#     report = get_most_popular_products(top_n=top_n)
-#     return jsonify(report), 200
+@app.route('/report/most-popular-products', methods=['GET'])
+@jwt_required()
+@authorize(required_roles=[1, 4])
+def most_popular_products_report():
+    top_n = request.args.get('top_n', default=5, type=int)
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    # Parse date strings if provided
+    start_date = datetime.strptime(start_date_str, "%Y-%m-%d") if start_date_str else None
+    end_date = datetime.strptime(end_date_str, "%Y-%m-%d") if end_date_str else None
+
+    report = get_most_popular_products(top_n=top_n, start_date=start_date, end_date=end_date)
+    return jsonify(report), 200
 
 # # Reports
-# @app.route('/report/predict-demand', methods=['GET'])
-# @jwt_required()
-# @authorize(required_roles=[1, 4]) 
-# def predict_demand_report():
-#     product_id = request.args.get('product_id', type=int)
-#     days = request.args.get('days', default=30, type=int)
-#     report = predict_future_demand(product_id, days=days)
-#     return jsonify(report), 200
+@app.route('/report/predict-demand', methods=['GET'])
+@jwt_required()
+@authorize(required_roles=[1, 4])
+def predict_demand_report():
+    product_id = request.args.get('product_id', type=int)
+    past_days = request.args.get('past_days', default=30, type=int)
+    future_days = request.args.get('future_days', default=30, type=int)
+
+    if not product_id:
+        return jsonify({"error": "product_id is required"}), 400
+
+    report = predict_future_demand(product_id, past_days=past_days, future_days=future_days)
+    return jsonify(report), 200
 
 ################################################################################### Product Management Routes #########################################################
 

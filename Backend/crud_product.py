@@ -1,8 +1,9 @@
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
-from datetime import datetime
-from models import db, Product, Promotion, Coupon
+from sqlalchemy import func
+from datetime import datetime, timedelta
+from models import db, Product, Promotion, Coupon, Order, OrderDetail
 from utils import is_valid_url
 import pandas as pd
 import os
@@ -176,3 +177,60 @@ def get_product_with_promotion(product_id):
         product.discounted_price = None
 
     return product
+
+
+def get_most_popular_products(top_n=5, start_date=None, end_date=None):
+    query = db.session.query(
+        OrderDetail.product_id,
+        func.sum(OrderDetail.quantity).label('total_quantity_sold')
+    ).join(Order).filter(
+        OrderDetail.order_id == Order.id
+    )
+
+    if start_date:
+        query = query.filter(Order.created_at >= start_date)
+    if end_date:
+        query = query.filter(Order.created_at <= end_date)
+
+    query = query.group_by(OrderDetail.product_id)
+    query = query.order_by(func.sum(OrderDetail.quantity).desc())
+    query = query.limit(top_n)
+
+    results = query.all()
+
+    # Fetch product details
+    report = []
+    for product_id, total_quantity_sold in results:
+        product = Product.query.get(product_id)
+        report.append({
+            "product_id": product_id,
+            "product_name": product.name if product else "Unknown",
+            "total_quantity_sold": total_quantity_sold
+        })
+
+    return report
+
+def predict_future_demand(product_id, past_days=30, future_days=30):
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=past_days)
+
+    # Calculate total quantity sold for the product in the past period
+    total_quantity_sold = db.session.query(
+        func.sum(OrderDetail.quantity)
+    ).join(Order).filter(
+        OrderDetail.order_id == Order.id,
+        OrderDetail.product_id == product_id,
+        Order.created_at.between(start_date, end_date)
+    ).scalar() or 0
+
+    # Calculate average daily sales
+    avg_daily_sales = total_quantity_sold / past_days
+
+    # Predict future demand
+    predicted_demand = avg_daily_sales * future_days
+
+    return {
+        "product_id": product_id,
+        "average_daily_sales": avg_daily_sales,
+        "predicted_demand_next_{}_days".format(future_days): predicted_demand
+    }
