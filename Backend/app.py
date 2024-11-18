@@ -331,25 +331,51 @@ def get_categories():
     return jsonify(category_data), 200
 
 
-# Create a Product
+from flask import request
+
 @app.route('/products', methods=['POST'])
 @jwt_required()
 @authorize(required_roles=[1, 2])
 def create_product_route():
-    data = request.get_json()
+    # Parse form data
+    name = request.form.get('name')
+    description = request.form.get('description')
+    price = request.form.get('price')
+    image = request.files.get('image')
+
+    if not name or not description or not price:
+        return jsonify({"error": "Name, description, and price are required"}), 400
+
+    # Convert price to a float
+    try:
+        price = float(price)
+    except ValueError:
+        return jsonify({"error": "Price must be a valid number"}), 400
+
+    # Handle the image file (if provided)
+    image_url = None
+    if image:
+        # Here you can add your logic to save the image to a directory or cloud storage
+        # For example:
+        # image.save(os.path.join(UPLOAD_FOLDER, image.filename))
+        image_url = f"/uploads/{image.filename}"  # Assuming the image will be saved to this path
+
+    # Create the product object and add to database
     product = create_product(
-        name=data.get('name'),
-        category_id=data.get('category_id'),
-        inventory_id=data.get('inventory_id'),
-        description=data.get('description'),
-        price=data.get('price'),
-        stock_level=data.get('stock_level', 0),
-        image_url=data.get('image_url')
+        name=name,
+        category_id=None,  # Since category is not provided here
+        inventory_id=None,  # Since inventory is not provided here
+        description=description,
+        price=price,
+        stock_level=0,  # Default value since not provided
+        image_url=image_url
     )
+
     if product:
         return jsonify(product.to_dict()), 201
     else:
         return jsonify({"error": "Failed to create product"}), 400
+
 
 
 # Get all Products
