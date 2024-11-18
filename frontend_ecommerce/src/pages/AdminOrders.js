@@ -35,7 +35,7 @@ const AdminOrders = () => {
     // Fetch all return requests when the component mounts
     const fetchReturns = async () => {
       try {
-        const response = await api.get('/return');
+        const response = await api.get('/returns');
         setReturns(response.data);
       } catch (error) {
         enqueueSnackbar('Failed to fetch returns', { variant: 'error' });
@@ -46,6 +46,7 @@ const AdminOrders = () => {
     fetchOrders();
     fetchReturns();
   }, [enqueueSnackbar]);
+  console.log("Token:", localStorage.getItem('token'));
 
   // Handle updating order status
   const handleUpdateOrderStatus = async (orderId, status) => {
