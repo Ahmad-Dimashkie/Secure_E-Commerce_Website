@@ -145,15 +145,6 @@ const AdminProducts = () => {
     } catch (error) {
       enqueueSnackbar('Failed to save product', { variant: 'error' });
       console.error('Error saving product:', error);
-      if (error.response) {
-        console.error('Error response data:', error.response.data);
-        console.error('Error response status:', error.response.status);
-        console.error('Error response headers:', error.response.headers);
-      } else if (error.request) {
-        console.error('Error request:', error.request);
-      } else {
-        console.error('General error:', error.message);
-      }
     }
   };
 
@@ -171,9 +162,8 @@ const AdminProducts = () => {
 
   // Handle CSV file drop
   const handleOnDrop = (data) => {
-    console.log("CSV Data Preview:", data); // Display CSV data in console
+    console.log('CSV Data Preview:', data); // Display CSV data in console
     enqueueSnackbar('CSV loaded for preview. Upload to process.', { variant: 'info' });
-    // Set the CSV file content for previewing purposes
   };
 
   // Handle actual CSV upload to the backend
@@ -224,12 +214,33 @@ const AdminProducts = () => {
   const handleSavePromotion = async () => {
     try {
       const promotionData = {
+        product_id: selectedProduct.id,
         discount_percentage: parseFloat(promotionDetails.discount),
         start_date: promotionDetails.startDate,
         end_date: promotionDetails.endDate,
       };
 
-      await api.post(`/products/${selectedProduct.id}/promotions`, promotionData);
+      // Apply promotion to the product via API call
+      await api.post('/promotions', promotionData);
+
+      // Update the product in the local state to reflect the new price and promotion details
+      const discountedPrice = selectedProduct.price * (1 - promotionDetails.discount / 100);
+      setProducts((prevProducts) =>
+        prevProducts.map((product) =>
+          product.id === selectedProduct.id
+            ? {
+                ...product,
+                discountedPrice,
+                promotionDetails: {
+                  discount: promotionDetails.discount,
+                  startDate: promotionDetails.startDate,
+                  endDate: promotionDetails.endDate,
+                },
+              }
+            : product
+        )
+      );
+
       enqueueSnackbar('Promotion added successfully', { variant: 'success' });
       handlePromotionClose();
     } catch (error) {
@@ -259,11 +270,7 @@ const AdminProducts = () => {
             onChange={handleCsvFileSelect}
             style={{ marginBottom: '10px' }}
           />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleCsvUpload}
-          >
+          <Button variant="contained" color="primary" onClick={handleCsvUpload}>
             Upload CSV
           </Button>
         </Box>
@@ -283,7 +290,7 @@ const AdminProducts = () => {
         <Grid container spacing={3} sx={{ marginTop: '20px' }}>
           {products.map((product) => (
             <Grid item xs={12} sm={6} md={6} key={product.id}>
-              <Card sx={{ display: 'flex', height: '200px' }}>
+              <Card sx={{ display: 'flex', height: '250px' }}>
                 <CardMedia
                   component="img"
                   sx={{ width: 230 }}
@@ -297,9 +304,29 @@ const AdminProducts = () => {
                   <Typography variant="body2" color="text.secondary">
                     {product.description}
                   </Typography>
-                  <Typography variant="body1" color="text.primary">
-                    ${product.price}
-                  </Typography>
+                  <Box sx={{ marginTop: '10px' }}>
+                    {product.discountedPrice ? (
+                      <>
+                        <Typography
+                          variant="body1"
+                          color="text.secondary"
+                          sx={{ textDecoration: 'line-through', marginRight: '10px' }}
+                        >
+                          ${product.price.toFixed(2)}
+                        </Typography>
+                        <Typography variant="body1" color="error" sx={{ fontWeight: 'bold' }}>
+                          ${product.discountedPrice.toFixed(2)}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ marginTop: '5px' }}>
+                          Promotion: {product.promotionDetails?.startDate} - {product.promotionDetails?.endDate}
+                        </Typography>
+                      </>
+                    ) : (
+                      <Typography variant="body1" color="text.primary">
+                        ${product.price.toFixed(2)}
+                      </Typography>
+                    )}
+                  </Box>
                   <Box sx={{ marginTop: '10px' }}>
                     <Button
                       variant="contained"
@@ -336,7 +363,59 @@ const AdminProducts = () => {
           <DialogTitle>{selectedProduct?.id ? 'Edit Product' : 'Add New Product'}</DialogTitle>
           <DialogContent>
             {/* Product form fields */}
-            {/* ... */}
+            <TextField
+              margin="dense"
+              label="Product Name"
+              fullWidth
+              value={selectedProduct?.name || ''}
+              onChange={(e) => setSelectedProduct({ ...selectedProduct, name: e.target.value })}
+            />
+            <TextField
+              margin="dense"
+              label="Description"
+              fullWidth
+              value={selectedProduct?.description || ''}
+              onChange={(e) => setSelectedProduct({ ...selectedProduct, description: e.target.value })}
+            />
+            <TextField
+              margin="dense"
+              label="Price"
+              type="number"
+              fullWidth
+              value={selectedProduct?.price || ''}
+              onChange={(e) => setSelectedProduct({ ...selectedProduct, price: e.target.value })}
+            />
+            <TextField
+              margin="dense"
+              label="Category ID"
+              type="number"
+              fullWidth
+              value={selectedProduct?.category_id || ''}
+              onChange={(e) => setSelectedProduct({ ...selectedProduct, category_id: e.target.value })}
+            />
+            <TextField
+              margin="dense"
+              label="Inventory ID"
+              type="number"
+              fullWidth
+              value={selectedProduct?.inventory_id || ''}
+              onChange={(e) => setSelectedProduct({ ...selectedProduct, inventory_id: e.target.value })}
+            />
+            <TextField
+              margin="dense"
+              label="Stock Level"
+              type="number"
+              fullWidth
+              value={selectedProduct?.stock_level || ''}
+              onChange={(e) => setSelectedProduct({ ...selectedProduct, stock_level: e.target.value })}
+            />
+            <TextField
+              margin="dense"
+              label="Image URL"
+              fullWidth
+              value={selectedProduct?.image_url || ''}
+              onChange={(e) => setSelectedProduct({ ...selectedProduct, image_url: e.target.value })}
+            />
           </DialogContent>
           <DialogActions>
             <Button onClick={handleClose} color="secondary">
@@ -358,9 +437,7 @@ const AdminProducts = () => {
               type="number"
               fullWidth
               value={promotionDetails.discount}
-              onChange={(e) =>
-                setPromotionDetails({ ...promotionDetails, discount: e.target.value })
-              }
+              onChange={(e) => setPromotionDetails({ ...promotionDetails, discount: e.target.value })}
             />
             <TextField
               margin="dense"
@@ -368,9 +445,7 @@ const AdminProducts = () => {
               type="date"
               fullWidth
               value={promotionDetails.startDate}
-              onChange={(e) =>
-                setPromotionDetails({ ...promotionDetails, startDate: e.target.value })
-              }
+              onChange={(e) => setPromotionDetails({ ...promotionDetails, startDate: e.target.value })}
               InputLabelProps={{ shrink: true }}
             />
             <TextField
@@ -379,9 +454,7 @@ const AdminProducts = () => {
               type="date"
               fullWidth
               value={promotionDetails.endDate}
-              onChange={(e) =>
-                setPromotionDetails({ ...promotionDetails, endDate: e.target.value })
-              }
+              onChange={(e) => setPromotionDetails({ ...promotionDetails, endDate: e.target.value })}
               InputLabelProps={{ shrink: true }}
             />
           </DialogContent>
