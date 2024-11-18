@@ -311,7 +311,7 @@ const AdminProducts = () => {
                 type="file"
                 hidden
                 onChange={(e) =>
-                  setSelectedProduct({ ...selectedProduct, image: e.target.files[0] })
+                  setSelectedProduct({ ...selectedProduct, image: e.target.files[0] || null })
                 }
               />
             </Button>
