@@ -318,18 +318,11 @@ def most_popular_products_report():
     return jsonify(report), 200
 
 # # Reports
-@app.route('/report/predict-demand', methods=['GET'])
+@app.route('/report/predict-demand/<int:product_id>', methods=['GET'])
 @jwt_required()
 @authorize(required_roles=[1, 4])
-def predict_demand_report():
-    product_id = request.args.get('product_id', type=int)
-    past_days = request.args.get('past_days', default=30, type=int)
-    future_days = request.args.get('future_days', default=30, type=int)
-
-    if not product_id:
-        return jsonify({"error": "product_id is required"}), 400
-
-    report = predict_future_demand(product_id, past_days=past_days, future_days=future_days)
+def predict_demand_report(product_id):
+    report = predict_future_demand(product_id, past_days=30, future_days=30)
     return jsonify(report), 200
 
 ################################################################################### Product Management Routes #########################################################
