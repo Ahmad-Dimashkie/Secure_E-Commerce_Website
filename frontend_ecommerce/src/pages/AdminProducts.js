@@ -62,38 +62,76 @@ const AdminProducts = () => {
 // Handle saving product (either add or update)
 const handleSaveProduct = async () => {
   try {
-    const productData = {
-      name: selectedProduct.name,
-      description: selectedProduct.description,
-      price: parseFloat(selectedProduct.price),
-      category_id: parseInt(selectedProduct.category_id),
-      inventory_id: parseInt(selectedProduct.inventory_id),
-      stock_level: parseInt(selectedProduct.stock_level),
-      image_url: selectedProduct.image_url || null,
-    };
+    let response;
 
+    if (selectedProduct.image) {
+      // If an image is provided, use FormData for the request
+      const formData = new FormData();
+      formData.append('name', selectedProduct.name);
+      formData.append('description', selectedProduct.description);
+      formData.append('price', parseFloat(selectedProduct.price));
+      formData.append('category_id', parseInt(selectedProduct.category_id));
+      formData.append('inventory_id', parseInt(selectedProduct.inventory_id));
+      formData.append('stock_level', parseInt(selectedProduct.stock_level));
+      formData.append('image', selectedProduct.image);
+
+      if (selectedProduct.id) {
+        // Update existing product
+        response = await api.put(`/products/${selectedProduct.id}`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      } else {
+        // Create new product
+        response = await api.post('/products', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      }
+    } else {
+      // If no image, send JSON data
+      const productData = {
+        name: selectedProduct.name,
+        description: selectedProduct.description,
+        price: parseFloat(selectedProduct.price),
+        category_id: parseInt(selectedProduct.category_id),
+        inventory_id: parseInt(selectedProduct.inventory_id),
+        stock_level: parseInt(selectedProduct.stock_level),
+        image_url: selectedProduct.image_url || '', // Optional field, can be empty
+      };
+
+      if (selectedProduct.id) {
+        // Update existing product
+        response = await api.put(`/products/${selectedProduct.id}`, productData, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+      } else {
+        // Create new product
+        response = await api.post('/products', productData, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+      }
+    }
+
+    // Update state with new or updated product
     if (selectedProduct.id) {
-      // Update existing product
-      const response = await api.put(`/products/${selectedProduct.id}`, productData);
       setProducts((prevProducts) =>
         prevProducts.map((product) => (product.id === selectedProduct.id ? response.data : product))
       );
-      enqueueSnackbar('Product updated successfully', { variant: 'success' });
     } else {
-      // Add new product
-      const response = await api.post('/products', productData, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
       setProducts([...products, response.data]);
-      enqueueSnackbar('Product added successfully', { variant: 'success' });
     }
+
+    enqueueSnackbar('Product saved successfully', { variant: 'success' });
     handleClose();
   } catch (error) {
     enqueueSnackbar('Failed to save product', { variant: 'error' });
-
-    // Print the error to the console for debugging
     console.error('Error saving product:', error);
     if (error.response) {
       console.error('Error response data:', error.response.data);
@@ -106,6 +144,7 @@ const handleSaveProduct = async () => {
     }
   }
 };
+
 
   // Handle deleting a product
   const handleDeleteProduct = async (productId) => {
