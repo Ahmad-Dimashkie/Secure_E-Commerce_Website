@@ -16,11 +16,31 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AdminSidebar from "../components/AdminSidebar";
 import { useSnackbar } from "notistack";
 import api from "../services/api";
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const AdminInventory = () => {
   const { enqueueSnackbar } = useSnackbar();
   const [products, setProducts] = useState([]); // State for products
   const [categories, setCategories] = useState([]); // State for categories
+  const [reports, setReports] = useState([]); // State for inventory reports
   const [inventoryReport, setInventoryReport] = useState(null); // State for inventory turnover report
   const [newInventory, setNewInventory] = useState({
     category_id: "",
@@ -59,8 +79,23 @@ const AdminInventory = () => {
       }
     };
 
+    const fetchInventoryReport = async () => {
+      try {
+        const response = await api.get("/report/inventory-turnover"); // Fetch inventory turnover report from backend
+        console.log("Fetched inventory turnover report:", response.data);
+        setInventoryReport(response.data);
+        enqueueSnackbar("Inventory turnover report loaded successfully.", {
+          variant: "success",
+        });
+      } catch (error) {
+        console.error("Error fetching inventory turnover report:", error);
+        enqueueSnackbar("Failed to load inventory turnover report.", { variant: "error" });
+      }
+    };
+
     fetchInventory();
     fetchCategories();
+    fetchInventoryReport();
   }, []);
 
   const handleCreateInventory = async () => {
@@ -123,22 +158,22 @@ const AdminInventory = () => {
     }
   };
 
-  // Handle generating inventory turnover report
-  const handleGenerateInventoryTurnoverReport = async () => {
-    try {
-      const response = await api.get("/report/inventory-turnover", {
-        params: { days: 30 }, // Fetch report for the last 30 days (can be adjusted)
-      });
-      setInventoryReport(response.data); // Set report data in state
-      enqueueSnackbar("Inventory turnover report generated successfully.", {
-        variant: "success",
-      });
-    } catch (error) {
-      enqueueSnackbar("Failed to generate inventory turnover report.", {
-        variant: "error",
-      });
-      console.error("Error generating inventory turnover report:", error);
-    }
+  // Chart data for Inventory Turnover
+  const chartData = {
+    labels: ["Total Sales", "Average Inventory", "Inventory Turnover Ratio"],
+    datasets: [
+      {
+        label: "Inventory Turnover Report",
+        data: inventoryReport
+          ? [
+              inventoryReport.total_sales,
+              inventoryReport.average_inventory,
+              inventoryReport.inventory_turnover || 0,
+            ]
+          : [0, 0, 0],
+        backgroundColor: ["#3f51b5", "#ff9800", "#4caf50"],
+      },
+    ],
   };
 
   return (
@@ -149,29 +184,7 @@ const AdminInventory = () => {
           <Typography variant="h4" component="h2" sx={{ marginBottom: "20px" }}>
             Inventory Management
           </Typography>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handleGenerateInventoryTurnoverReport}
-          >
-            Generate Inventory Turnover Report
-          </Button>
         </Box>
-
-        {/* Inventory Turnover Report */}
-        {inventoryReport && (
-          <Box sx={{ marginBottom: "20px", padding: "10px", border: "1px solid grey" }}>
-            <Typography variant="h6">Inventory Turnover Report</Typography>
-            <Typography>Total Sales: ${inventoryReport.total_sales.toFixed(2)}</Typography>
-            <Typography>Average Inventory: {inventoryReport.average_inventory}</Typography>
-            <Typography>
-              Inventory Turnover Ratio:{" "}
-              {inventoryReport.inventory_turnover
-                ? inventoryReport.inventory_turnover.toFixed(2)
-                : "N/A"}
-            </Typography>
-          </Box>
-        )}
 
         {/* Create Inventory Form */}
         <Box sx={{ marginBottom: "20px" }}>
@@ -209,6 +222,32 @@ const AdminInventory = () => {
           >
             Create
           </Button>
+        </Box>
+
+        {/* Inventory Turnover Report */}
+        {inventoryReport && (
+          <Box
+            sx={{
+              marginBottom: "20px",
+              padding: "10px",
+              border: "1px solid grey",
+            }}
+          >
+            <Typography variant="h6">Inventory Turnover Report</Typography>
+            <Typography>Total Sales: ${inventoryReport.total_sales.toFixed(2)}</Typography>
+            <Typography>Average Inventory: {inventoryReport.average_inventory}</Typography>
+            <Typography>
+              Inventory Turnover Ratio: {" "}
+              {inventoryReport.inventory_turnover
+                ? inventoryReport.inventory_turnover.toFixed(2)
+                : "N/A"}
+            </Typography>
+          </Box>
+        )}
+
+        {/* Inventory Turnover Chart */}
+        <Box sx={{ marginBottom: "20px" }}>
+          <Bar data={chartData} options={{ responsive: true }} />
         </Box>
 
         {/* Categories Section */}
