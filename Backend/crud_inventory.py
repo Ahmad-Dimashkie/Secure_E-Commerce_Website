@@ -1,4 +1,4 @@
-from models import db, Product, Inventory
+from models import db, Product, Inventory, Order, OrderDetail
 from utils import send_low_stock_alert
 from sqlalchemy import func
 from datetime import datetime, timedelta
@@ -33,6 +33,37 @@ def delete_inventory_by_id(inv_id):
 
 def get_low_stock_inventory():
     return Inventory.query.filter(Inventory.capacity < Inventory.threshold).all()
+
+
+def calculate_inventory_turnover(days=30):
+    # Define the time period
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=days)
+
+    # Calculate Total Sales (COGS)
+    total_sales = db.session.query(
+        func.sum(OrderDetail.quantity * OrderDetail.price_per_unit)
+    ).join(Order).filter(
+        Order.created_at.between(start_date, end_date)
+    ).scalar() or 0
+
+    # Calculate Average Inventory
+    # For simplicity, using the average of beginning and ending inventory capacities
+    beginning_inventory = db.session.query(func.sum(Inventory.capacity)).scalar() or 0
+
+    # Assuming no inventory records over time, so ending inventory is same as current inventory
+    ending_inventory = beginning_inventory
+
+    average_inventory = (beginning_inventory + ending_inventory) / 2 if beginning_inventory else 0
+
+    # Calculate Inventory Turnover Ratio
+    inventory_turnover = (total_sales / average_inventory) if average_inventory else None
+
+    return {
+        "total_sales": total_sales,
+        "average_inventory": average_inventory,
+        "inventory_turnover": inventory_turnover
+    }
 
 # def get_most_popular_products(top_n=5):
 #     # Query total quantity sold per product
