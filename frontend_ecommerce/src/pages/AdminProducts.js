@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Typography,
   Box,
@@ -16,19 +16,12 @@ import {
 import AdminSidebar from '../components/AdminSidebar';
 import { useCSVReader } from 'react-papaparse'; // Updated import for CSV uploads
 import { useSnackbar } from 'notistack';
+import api from '../services/api'; // Use the centralized API instance
 
 const AdminProducts = () => {
   const { CSVReader } = useCSVReader();
   const { enqueueSnackbar } = useSnackbar();
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      name: 'Cedar Discoveries',
-      description: 'Find your path in Lebanon',
-      price: 1,
-      image: null, // You can use a placeholder image URL here
-    },
-  ]); // State for products
+  const [products, setProducts] = useState([]); // State for products
   const [open, setOpen] = useState(false); // State for dialog
   const [promotionOpen, setPromotionOpen] = useState(false); // State for promotion dialog
   const [selectedProduct, setSelectedProduct] = useState(null); // Product selected for editing or viewing
@@ -38,6 +31,21 @@ const AdminProducts = () => {
     endDate: '',
   });
   const [csvProducts, setCsvProducts] = useState([]); // State for products from CSV
+
+  // Fetch products from backend
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await api.get('/products');
+        setProducts(response.data);
+      } catch (error) {
+        enqueueSnackbar('Failed to fetch products', { variant: 'error' });
+        console.error('Error fetching products:', error.response || error);
+      }
+    };
+
+    fetchProducts();
+  }, [enqueueSnackbar]);
 
   // Handle dialog open for adding or editing a product
   const handleOpen = (product = null) => {
@@ -53,28 +61,49 @@ const AdminProducts = () => {
   };
 
   // Handle saving product (either add or update)
-  const handleSaveProduct = () => {
-    if (selectedProduct.id) {
-      // Update existing product
-      const updatedProducts = products.map((product) =>
-        product.id === selectedProduct.id ? selectedProduct : product
-      );
-      setProducts(updatedProducts);
-    } else {
-      // Add new product
-      const newProductWithId = {
-        ...selectedProduct,
-        id: products.length + 1,
-      };
-      setProducts([...products, newProductWithId]);
+  const handleSaveProduct = async () => {
+    try {
+      if (selectedProduct.id) {
+        // Update existing product
+        const response = await api.put(`/products/${selectedProduct.id}`, selectedProduct);
+        setProducts((prevProducts) =>
+          prevProducts.map((product) => (product.id === selectedProduct.id ? response.data : product))
+        );
+        enqueueSnackbar('Product updated successfully', { variant: 'success' });
+      } else {
+        // Add new product
+        const formData = new FormData();
+        formData.append('name', selectedProduct.name);
+        formData.append('description', selectedProduct.description);
+        formData.append('price', selectedProduct.price);
+        if (selectedProduct.image) {
+          formData.append('image', selectedProduct.image);
+        }
+        const response = await api.post('/products', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        setProducts([...products, response.data]);
+        enqueueSnackbar('Product added successfully', { variant: 'success' });
+      }
+      handleClose();
+    } catch (error) {
+      enqueueSnackbar('Failed to save product', { variant: 'error' });
+      console.error('Error saving product:', error.response || error);
     }
-    handleClose();
   };
 
   // Handle deleting a product
-  const handleDeleteProduct = (productId) => {
-    const filteredProducts = products.filter((product) => product.id !== productId);
-    setProducts(filteredProducts);
+  const handleDeleteProduct = async (productId) => {
+    try {
+      await api.delete(`/products/${productId}`);
+      setProducts((prevProducts) => prevProducts.filter((product) => product.id !== productId));
+      enqueueSnackbar('Product deleted successfully', { variant: 'success' });
+    } catch (error) {
+      enqueueSnackbar('Failed to delete product', { variant: 'error' });
+      console.error('Error deleting product:', error.response || error);
+    }
   };
 
   const handleOnDrop = (data) => {
