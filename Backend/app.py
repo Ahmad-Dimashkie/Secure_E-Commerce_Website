@@ -623,14 +623,13 @@ def create_return_request_route():
     return jsonify(result), 201
 
 
-# Update return request status
+
+# Update return request status endpoint
 @app.route('/return/<int:return_id>/status', methods=['PUT'])
 @jwt_required()
 @authorize(required_roles=[1, 3])
 def update_return_request_status(return_id):
     action = request.json.get("action")
-    if action not in ['approve', 'deny']:
-        return jsonify({"error": "Invalid action"}), 400
 
     # Call the function to process the return request
     updated_request = process_return_request(return_id, action)

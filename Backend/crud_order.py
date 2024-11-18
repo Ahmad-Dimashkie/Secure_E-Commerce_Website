@@ -62,8 +62,19 @@ def process_return_request(return_id, action):
         if not return_request:
             return {"error": "Return request not found"}
         
+        # Map actions to status values
+        action_mapping = {
+            'approve': 'approved',
+            'deny': 'denied',
+            'refund': 'refunded',
+            'replacement': 'replaced'
+        }
+
+        if action not in action_mapping:
+            return {"error": "Invalid action"}, 400
+
         # Update the status based on action
-        return_request.status = 'approved' if action == 'approve' else 'denied'
+        return_request.status = action_mapping[action]
         db.session.commit()
         
         # Return the updated return request as a dictionary
