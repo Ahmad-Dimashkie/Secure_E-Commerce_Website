@@ -29,11 +29,6 @@ const AdminProducts = () => {
   const [products, setProducts] = useState([]); // State for products
   const [popularProductsReport, setPopularProductsReport] = useState([]); // Most Popular Products Report
   const [demandReport, setDemandReport] = useState(null); // Predicted Demand Report
-  const [reportFilters, setReportFilters] = useState({
-    top_n: 5,
-    start_date: "",
-    end_date: "",
-  });
   const [selectedProductForDemand, setSelectedProductForDemand] =
     useState(null); // Product selected for demand prediction
   const [open, setOpen] = useState(false); // State for product dialog
@@ -63,10 +58,7 @@ const AdminProducts = () => {
 
   const fetchMostPopularProducts = async () => {
     try {
-      const { top_n, start_date, end_date } = reportFilters;
-      const response = await api.get("/report/most-popular-products", {
-        params: { top_n, start_date, end_date },
-      });
+      const response = await api.get("/report/most-popular-products");
       setPopularProductsReport(response.data);
       enqueueSnackbar("Most popular products report fetched successfully.", {
         variant: "success",
@@ -332,39 +324,6 @@ const AdminProducts = () => {
               alignItems="center"
               sx={{ gap: "10px", marginBottom: "10px" }}
             >
-              <TextField
-                label="Top N"
-                type="number"
-                value={reportFilters.top_n}
-                onChange={(e) =>
-                  setReportFilters({ ...reportFilters, top_n: e.target.value })
-                }
-                sx={{ width: "150px" }}
-              />
-              <TextField
-                label="Start Date"
-                type="date"
-                value={reportFilters.start_date}
-                onChange={(e) =>
-                  setReportFilters({
-                    ...reportFilters,
-                    start_date: e.target.value,
-                  })
-                }
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                label="End Date"
-                type="date"
-                value={reportFilters.end_date}
-                onChange={(e) =>
-                  setReportFilters({
-                    ...reportFilters,
-                    end_date: e.target.value,
-                  })
-                }
-                InputLabelProps={{ shrink: true }}
-              />
               <Button variant="contained" onClick={fetchMostPopularProducts}>
                 Fetch Report
               </Button>
@@ -393,28 +352,6 @@ const AdminProducts = () => {
           {/* Predicted Demand Report */}
           <Box sx={{ marginBottom: "30px" }}>
             <Typography variant="h6">Predicted Demand Report</Typography>
-            <Grid container spacing={2}>
-              {products.map((product) => (
-                <Grid item xs={12} sm={6} md={4} key={product.id}>
-                  <Card sx={{ padding: "15px" }}>
-                    <CardContent>
-                      <Typography variant="h6">{product.name}</Typography>
-                      <Typography>
-                        Price: ${product.price.toFixed(2)}
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        color="secondary"
-                        sx={{ marginTop: "10px" }}
-                        onClick={() => fetchPredictedDemand(product.id)}
-                      >
-                        Predict Demand
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
 
             {/* Display Predicted Demand Report */}
             {demandReport && (
@@ -566,6 +503,14 @@ const AdminProducts = () => {
                       onClick={() => handlePromotionOpen(product)}
                     >
                       Manage Promotion
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      sx={{ marginTop: "10px" }}
+                      onClick={() => fetchPredictedDemand(product.id)}
+                    >
+                      Predict Demand
                     </Button>
                   </Box>
                 </CardContent>
