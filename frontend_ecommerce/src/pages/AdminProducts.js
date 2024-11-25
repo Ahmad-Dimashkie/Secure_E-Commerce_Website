@@ -117,7 +117,6 @@ const AdminProducts = () => {
       let response;
 
       if (selectedProduct.image) {
-        // If an image is provided, use FormData for the request
         const formData = new FormData();
         formData.append("name", selectedProduct.name);
         formData.append("description", selectedProduct.description);
