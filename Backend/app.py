@@ -25,7 +25,7 @@ from flask_cors import CORS
 import os
 from datetime import datetime
 from werkzeug.utils import secure_filename
-
+import re
 
 
 app = Flask(__name__)
@@ -81,8 +81,13 @@ def register_user():
         username = data.get("username", "").strip()
         password = data.get("password", "").strip()
         role_id = data.get("role_id")
+        
         if not username or not password or not role_id:
             return jsonify({"error": "Invalid input"}), 400
+        
+        # Password validation
+        if len(password) < 8 or not re.search(r"[A-Z]", password) or not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+            return jsonify({"error": "Password must be at least 8 characters long, contain a special character, and a capital letter"}), 400
         
         user = create_user(username, password, role_id)
         logging.info(f"User '{user.username}' registered with role ID {user.role_id}")
@@ -339,6 +344,7 @@ def get_categories():
 
 
 from flask import request
+
 
 # Create a Product
 @app.route('/products', methods=['POST'])
